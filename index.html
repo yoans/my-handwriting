@@ -20,10 +20,12 @@
         <button class="nav-btn" data-panel="machine">4. Printer</button>
       </nav>
       <div class="side-actions">
-        <button class="btn secondary" id="export-library">Download library</button>
-        <button class="btn secondary" id="import-library">Import library</button>
+        <button class="btn" id="export-project">Download backup</button>
+        <button class="btn secondary" id="import-project">Restore backup</button>
+        <button class="btn ghost" id="merge-project">Merge backup</button>
         <input id="import-file" type="file" accept="application/json,.json" hidden />
-        <p class="hint">Library stays in this browser until you download it.</p>
+        <p class="hint" id="save-status">Saving in this browser…</p>
+        <p class="hint">Auto-saves letters, stamps, the note, stamps on the page, and printer settings. Download a backup before clearing Safari data or switching devices.</p>
       </div>
     </aside>
 
@@ -157,9 +159,7 @@
       <section class="panel" id="panel-compose">
         <h2>Compose a note</h2>
         <p class="lede">Type what you want written. Missing letters are skipped and listed below. Common words you captured as wholes will be used instead of spelling them letter by letter.</p>
-        <textarea id="note-text" placeholder="Write the note here…">Dear friend,
-
-This was written by a pen in my printer, using strokes from my own hand.</textarea>
+        <textarea id="note-text" placeholder="Write the note here…"></textarea>
         <div class="row" style="margin-top:12px;">
           <div class="stack">
             <label for="x-height">x-height (mm)</label>

@@ -4,9 +4,7 @@ Turn samples of **your** writing into G-code a 3D printer can follow with a pen 
 
 **Live app (use this on a tablet):** https://yoans.github.io/my-handwriting/
 
-Everything runs in the browser. Capture letters with a stylus, scan doodles into stamps, then download G-code. Your library stays on that device until you export it.
-
-## Why this approach
+Everything runs in the browser. Letters, stamps, the note, page stickers, and printer settings auto-save in this browser (localStorage plus a second IndexedDB copy). **Download backup** writes a JSON file you can Restore on another device or after clearing Safari. **Merge backup** adds letters/stamps without replacing the current note.
 
 ## Why this approach
 

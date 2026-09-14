@@ -88,11 +88,12 @@ nav {
   border-color: rgba(196, 165, 116, 0.28);
 }
 
-.side-actions {
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.side-actions .hint {
+  margin: 0;
+}
+
+#save-status {
+  color: var(--gold);
 }
 
 .main {

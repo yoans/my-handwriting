@@ -1,6 +1,5 @@
 import {
-  loadLibrary, exportLibrary, importLibrary,
-  addGlyph, removeGlyph, addWord, removeWord, glyphCount,
+  loadLibrary, addGlyph, removeGlyph, addWord, removeWord, glyphCount,
   addStamp, removeStamp, loadPlacements, savePlacements,
   loadMachine, saveMachine, PRESETS, DEFAULT_MACHINE,
 } from "./library.js";
@@ -9,6 +8,10 @@ import { layoutText, normalizeStrokes, strokesToSvg } from "./layout.js";
 import { strokesToGcode, calibrationSquareGcode } from "./gcode.js";
 import { imageDataToStamp, rasterToImageData } from "./trace.js";
 import { placementsToStrokes, funRunPlacements, hitTestPlacement } from "./stamps.js";
+import {
+  loadProject, persistProject, projectToJson, parseIncomingFile,
+  mergeLibraries, backupFilename,
+} from "./persist.js";
 
 const CHARSET = [
   ..."abcdefghijklmnopqrstuvwxyz",
@@ -39,8 +42,112 @@ let selectedStampId = null;
 let selectedPlacement = -1;
 let dragging = null;
 let composeView = { scale: 1, ox: 40, oy: 40 };
+let importMode = "replace";
+let saveTimer = 0;
 
 const $ = (id) => document.getElementById(id);
+
+function collectProject() {
+  return {
+    library,
+    placements,
+    machine,
+    compose: {
+      text: $("note-text").value,
+      xHeight: Number($("x-height").value) || 3.2,
+      lineHeight: Number($("line-height").value) || 2.6,
+      tracking: Number($("tracking").value) || 0.18,
+      seed: Number($("seed").value) || 7,
+      jitter: Number($("jitter").value) || 0,
+      stampSize: Number($("stamp-size").value) || 28,
+      funRunCount: Number($("fun-run-count").value) || 6,
+    },
+    capture: {
+      mode: $("capture-mode").value,
+      glyph: $("glyph-target").value,
+      word: $("word-target").value,
+      strokes,
+    },
+    stampsUi: {
+      name: $("stamp-name").value,
+      mode: $("trace-mode").value,
+      threshold: Number($("trace-threshold").value),
+      join: Number($("trace-join").value),
+      invert: $("trace-invert").checked,
+    },
+    selectedStampId,
+  };
+}
+
+function applyProject(project) {
+  library = project.library;
+  placements = project.placements || [];
+  machine = { ...DEFAULT_MACHINE, ...project.machine };
+  selectedStampId = project.selectedStampId || library.stamps[0]?.id || null;
+  selectedPlacement = -1;
+  strokes = Array.isArray(project.capture?.strokes) ? project.capture.strokes : [];
+
+  $("note-text").value = project.compose?.text ?? "";
+  $("x-height").value = project.compose?.xHeight ?? 3.2;
+  $("line-height").value = project.compose?.lineHeight ?? 2.6;
+  $("tracking").value = project.compose?.tracking ?? 0.18;
+  $("seed").value = project.compose?.seed ?? 7;
+  $("jitter").value = project.compose?.jitter ?? 55;
+  $("stamp-size").value = project.compose?.stampSize ?? 28;
+  $("fun-run-count").value = project.compose?.funRunCount ?? 6;
+
+  $("capture-mode").value = project.capture?.mode || "glyph";
+  $("glyph-target").value = project.capture?.glyph || "a";
+  $("word-target").value = project.capture?.word || "the";
+
+  $("stamp-name").value = project.stampsUi?.name || "doodle";
+  $("trace-mode").value = project.stampsUi?.mode || "outline";
+  $("trace-threshold").value = project.stampsUi?.threshold ?? 145;
+  $("trace-join").value = project.stampsUi?.join ?? 1;
+  $("trace-invert").checked = Boolean(project.stampsUi?.invert);
+
+  fillMachineForm();
+  syncMode();
+  renderGrid();
+  renderVariants();
+  renderStampLists();
+  drawCapture();
+  drawStampPreview();
+  drawCompose();
+}
+
+function updateSaveStatus(result) {
+  const el = $("save-status");
+  if (!el) return;
+  if (!result.localStorageOk && !result.indexedDbOk) {
+    el.textContent = "Could not save in this browser — download a backup now.";
+    el.style.color = "#f2b8b5";
+    return;
+  }
+  const when = new Date(result.project.savedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const where = [
+    result.localStorageOk ? "browser" : null,
+    result.indexedDbOk ? "backup copy" : null,
+  ].filter(Boolean).join(" + ");
+  el.textContent = `Saved ${when} in this ${where}.`;
+  el.style.color = "";
+}
+
+function autosave(immediate = false) {
+  const run = async () => {
+    const result = await persistProject(collectProject());
+    updateSaveStatus(result);
+    if (!result.localStorageOk && !result.indexedDbOk) {
+      console.warn("persist failed", result.error);
+    }
+  };
+  if (immediate) {
+    clearTimeout(saveTimer);
+    return run();
+  }
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(run, 280);
+}
 
 function setStatus(msg) {
   $("capture-status").textContent = msg;
@@ -356,6 +463,7 @@ function saveCapture() {
   drawCapture();
   drawCompose();
   setStatus("Saved. Capture another variant — three to five per letter looks far more human.");
+  autosave(true);
 }
 
 function paperFromEvent(canvas, event) {
@@ -517,6 +625,7 @@ function renderStampLists() {
         selectedStampId = library.stamps[0]?.id || null;
         renderStampLists();
         drawCompose();
+        autosave(true);
         return;
       }
       selectedStampId = stamp.id;
@@ -532,6 +641,7 @@ function renderStampLists() {
 function persistPlacements() {
   savePlacements(placements);
   drawCompose();
+  autosave();
 }
 
 function wireComposeCanvas() {
@@ -570,7 +680,7 @@ function wireComposeCanvas() {
     drawCompose();
   });
   const endDrag = () => {
-    if (dragging != null) savePlacements(placements);
+    if (dragging != null) persistPlacements();
     dragging = null;
   };
   canvas.addEventListener("pointerup", endDrag);
@@ -595,6 +705,7 @@ function wireCapture() {
     if (currentStroke && currentStroke.length > 1) strokes.push(currentStroke);
     currentStroke = null;
     drawCapture();
+    autosave();
   };
   canvas.addEventListener("pointerup", end);
   canvas.addEventListener("pointercancel", end);
@@ -671,6 +782,7 @@ function readMachineForm() {
   };
   saveMachine(machine);
   syncMachineHelp();
+  autosave();
 }
 
 function exportNote(dryRun) {
@@ -703,26 +815,34 @@ function initNav() {
 function init() {
   initNav();
   wireCapture();
-  fillMachineForm();
-  renderGrid();
-  renderVariants();
-  renderStampLists();
-  drawCapture();
-  drawStampPreview();
-  drawCompose();
   wireComposeCanvas();
 
-  $("capture-mode").addEventListener("change", syncMode);
+  loadProject().then((project) => {
+    applyProject(project);
+    autosave(true);
+  }).catch((err) => {
+    console.warn(err);
+    fillMachineForm();
+    renderGrid();
+    renderVariants();
+    renderStampLists();
+    drawCapture();
+    drawStampPreview();
+    drawCompose();
+  });
+
+  $("capture-mode").addEventListener("change", () => { syncMode(); autosave(); });
   $("glyph-target").addEventListener("input", () => {
     if ($("glyph-target").value.length > 1) {
       $("glyph-target").value = $("glyph-target").value.slice(-1);
     }
     renderGrid();
     renderVariants();
+    autosave();
   });
-  $("word-target").addEventListener("input", renderVariants);
-  $("undo-stroke").addEventListener("click", () => { strokes.pop(); drawCapture(); });
-  $("clear-strokes").addEventListener("click", () => { strokes = []; drawCapture(); });
+  $("word-target").addEventListener("input", () => { renderVariants(); autosave(); });
+  $("undo-stroke").addEventListener("click", () => { strokes.pop(); drawCapture(); autosave(); });
+  $("clear-strokes").addEventListener("click", () => { strokes = []; drawCapture(); autosave(); });
   $("save-capture").addEventListener("click", saveCapture);
   $("load-overlay").addEventListener("click", () => $("overlay-file").click());
   $("overlay-file").addEventListener("change", (e) => {
@@ -739,7 +859,7 @@ function init() {
   });
 
   ["note-text", "x-height", "line-height", "tracking", "seed", "jitter"].forEach((id) => {
-    $(id).addEventListener("input", drawCompose);
+    $(id).addEventListener("input", () => { drawCompose(); autosave(); });
   });
   $("load-stamp-image").addEventListener("click", () => $("stamp-file").click());
   $("stamp-camera").addEventListener("click", () => $("stamp-camera-file").click());
@@ -751,8 +871,8 @@ function init() {
     loadStampFile(e.dataTransfer.files?.[0]);
   });
   ["trace-mode", "trace-threshold", "trace-join", "trace-invert"].forEach((id) => {
-    $(id).addEventListener("input", retraceStamp);
-    $(id).addEventListener("change", retraceStamp);
+    $(id).addEventListener("input", () => { retraceStamp(); autosave(); });
+    $(id).addEventListener("change", () => { retraceStamp(); autosave(); });
   });
   $("save-stamp").addEventListener("click", () => {
     if (!lastTrace?.count) {
@@ -771,6 +891,7 @@ function init() {
     selectedStampId = stamp.id;
     renderStampLists();
     $("stamp-status").textContent = `Saved “${stamp.name}”. Open Compose, then click the page or Fun run.`;
+    autosave(true);
   });
   $("fun-run").addEventListener("click", () => {
     const stamp = library.stamps?.find((s) => s.id === selectedStampId);
@@ -793,10 +914,14 @@ function init() {
     selectedPlacement = -1;
     persistPlacements();
   });
+  $("stamp-name").addEventListener("input", () => autosave());
+  $("fun-run-count").addEventListener("input", () => autosave());
   $("stamp-size").addEventListener("change", () => {
     if (selectedPlacement >= 0 && placements[selectedPlacement]) {
       placements[selectedPlacement].sizeMm = Number($("stamp-size").value) || 28;
       persistPlacements();
+    } else {
+      autosave();
     }
   });
   $("export-gcode").addEventListener("click", () => exportNote(false));
@@ -822,20 +947,43 @@ function init() {
     download("calibration-20mm.gcode", calibrationSquareGcode(machine).gcode);
   });
 
-  $("export-library").addEventListener("click", () => {
-    download("handwriting-library.json", exportLibrary(library), "application/json");
+  $("export-project").addEventListener("click", async () => {
+    const result = await persistProject(collectProject());
+    updateSaveStatus(result);
+    download(backupFilename(), projectToJson(result.project), "application/json");
   });
-  $("import-library").addEventListener("click", () => $("import-file").click());
+  $("import-project").addEventListener("click", () => {
+    importMode = "replace";
+    $("import-file").click();
+  });
+  $("merge-project").addEventListener("click", () => {
+    importMode = "merge";
+    $("import-file").click();
+  });
   $("import-file").addEventListener("change", async (e) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
     try {
-      library = importLibrary(await file.text());
-      renderGrid();
-      renderVariants();
-      renderStampLists();
-      drawCompose();
-      setStatus("Library imported.");
+      const incoming = parseIncomingFile(await file.text());
+      if (importMode === "merge") {
+        library = mergeLibraries(library, incoming.project.library);
+        selectedStampId = library.stamps.at(-1)?.id || selectedStampId;
+        renderGrid();
+        renderVariants();
+        renderStampLists();
+        drawCompose();
+        await autosave(true);
+        setStatus("Merged letters and stamps from backup.");
+        $("save-status").textContent = `Merged ${file.name} — current note kept.`;
+        return;
+      }
+      if (!confirm("Replace everything saved in this browser with this backup? You can Merge instead if you only want to add letters/stamps.")) {
+        return;
+      }
+      applyProject(incoming.project);
+      await autosave(true);
+      setStatus("Backup restored.");
     } catch (err) {
       alert("Could not import that file: " + err.message);
     }
@@ -854,6 +1002,11 @@ function init() {
       selectedPlacement = -1;
       persistPlacements();
     }
+  });
+
+  window.addEventListener("pagehide", () => { persistProject(collectProject()); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") persistProject(collectProject());
   });
 }
 
