@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>My Handwriting — stroke studio</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <h1>My Handwriting</h1>
+        <p>Capture your strokes. Type a note. Export G-code for a pen on the printer.</p>
+      </div>
+      <nav>
+        <button class="nav-btn" data-panel="capture" aria-current="page">1. Capture</button>
+        <button class="nav-btn" data-panel="stamps">2. Stamps</button>
+        <button class="nav-btn" data-panel="compose">3. Compose</button>
+        <button class="nav-btn" data-panel="machine">4. Printer</button>
+      </nav>
+      <div class="side-actions">
+        <button class="btn secondary" id="export-library">Download library</button>
+        <button class="btn secondary" id="import-library">Import library</button>
+        <input id="import-file" type="file" accept="application/json,.json" hidden />
+        <p class="hint">Library stays in this browser until you download it.</p>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="panel active" id="panel-capture">
+        <h2>Capture your hand</h2>
+        <p class="lede">
+          A 3D printer needs <em>ordered pen strokes</em>, not a picture of letters.
+          Write each character here (stylus is best), or load a scan of your samples and trace over it so the path matches how you actually write.
+        </p>
+
+        <div class="row">
+          <div class="stack">
+            <label for="capture-mode">Mode</label>
+            <select id="capture-mode">
+              <option value="glyph">Letter / mark</option>
+              <option value="word">Whole word</option>
+              <option value="page">Full page / existing note</option>
+            </select>
+          </div>
+          <div class="stack" id="glyph-target-wrap">
+            <label for="glyph-target">Character</label>
+            <input id="glyph-target" type="text" maxlength="1" value="a" style="width:4rem; text-align:center; font-size:1.4rem;" />
+          </div>
+          <div class="stack" id="word-target-wrap" hidden>
+            <label for="word-target">Word</label>
+            <input id="word-target" type="text" value="the" />
+          </div>
+          <div class="stack">
+            <label>&nbsp;</label>
+            <div class="toolbar">
+              <button class="btn ghost" id="undo-stroke">Undo stroke</button>
+              <button class="btn ghost" id="clear-strokes">Clear</button>
+              <button class="btn" id="save-capture">Save into library</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:12px;">
+          <div class="stack">
+            <label>Scan overlay</label>
+            <div class="toolbar">
+              <button class="btn secondary" id="load-overlay">Load photo / scan</button>
+              <input id="overlay-file" type="file" accept="image/*" hidden />
+              <button class="btn ghost" id="clear-overlay">Remove overlay</button>
+            </div>
+          </div>
+          <div class="stack">
+            <label for="overlay-opacity">Overlay ink</label>
+            <input id="overlay-opacity" type="range" min="0" max="100" value="35" />
+          </div>
+        </div>
+
+        <div class="paper-stage">
+          <div class="canvas-wrap">
+            <canvas id="capture-canvas" width="1400" height="700"></canvas>
+          </div>
+          <div class="guide-legend">
+            <span><i class="swatch" style="background:#8b3a32"></i>cap height</span>
+            <span><i class="swatch" style="background:#3f6b58"></i>x-height</span>
+            <span><i class="swatch" style="background:#1c1712"></i>baseline</span>
+            <span><i class="swatch" style="background:#6b5a8c"></i>descender</span>
+            <span>Write on the lines. Left gray tick is the origin.</span>
+          </div>
+        </div>
+        <p class="status" id="capture-status"></p>
+
+        <h3 style="margin:22px 0 8px;">Alphabet</h3>
+        <p class="hint">Green cells have at least two variants. Capture 3–5 of each letter you use, plus a few common words.</p>
+        <div class="glyph-grid" id="glyph-grid"></div>
+
+        <h3 style="margin:22px 0 8px;">Saved variants</h3>
+        <div class="variant-list" id="variant-list"></div>
+      </section>
+
+      <section class="panel" id="panel-stamps">
+        <h2>Scan a drawing</h2>
+        <p class="lede">
+          Photo a kid drawing, doodle, or sticker. We turn the dark ink into pen paths you can stamp onto the note —
+          one copy, or a whole wiggly parade.
+        </p>
+        <div class="row">
+          <div class="stack">
+            <label>Photo</label>
+            <div class="toolbar">
+              <button class="btn" id="load-stamp-image">Load scan / photo</button>
+              <button class="btn secondary" id="stamp-camera">Camera</button>
+              <input id="stamp-file" type="file" accept="image/*" hidden />
+              <input id="stamp-camera-file" type="file" accept="image/*" capture="environment" hidden />
+            </div>
+          </div>
+          <div class="stack">
+            <label for="trace-mode">Trace</label>
+            <select id="trace-mode">
+              <option value="outline">Outline (crayon / marker)</option>
+              <option value="centerline">Centerline (thin pen)</option>
+              <option value="scribble">Outline + scribble fill</option>
+            </select>
+          </div>
+          <div class="stack">
+            <label for="trace-threshold">Ink threshold</label>
+            <input id="trace-threshold" type="range" min="40" max="220" value="145" />
+          </div>
+          <div class="stack">
+            <label for="trace-join">Join gaps</label>
+            <input id="trace-join" type="range" min="0" max="3" value="1" />
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <label class="hint"><input type="checkbox" id="trace-invert" /> Invert (white ink on dark paper)</label>
+          <div class="stack">
+            <label for="stamp-name">Stamp name</label>
+            <input id="stamp-name" type="text" value="doodle" />
+          </div>
+          <div class="stack">
+            <label>&nbsp;</label>
+            <button class="btn" id="save-stamp">Save stamp</button>
+          </div>
+        </div>
+        <div class="paper-stage">
+          <div class="canvas-wrap">
+            <canvas id="stamp-canvas" width="1400" height="700"></canvas>
+          </div>
+        </div>
+        <p class="status" id="stamp-status">Load a photo of a drawing on plain paper. Darker marks become paths.</p>
+        <h3 style="margin:22px 0 8px;">Stamp box</h3>
+        <p class="hint">Click a stamp to select it, then place copies on Compose. Click again to delete.</p>
+        <div class="variant-list" id="stamp-list"></div>
+      </section>
+
+      <section class="panel" id="panel-compose">
+        <h2>Compose a note</h2>
+        <p class="lede">Type what you want written. Missing letters are skipped and listed below. Common words you captured as wholes will be used instead of spelling them letter by letter.</p>
+        <textarea id="note-text" placeholder="Write the note here…">Dear friend,
+
+This was written by a pen in my printer, using strokes from my own hand.</textarea>
+        <div class="row" style="margin-top:12px;">
+          <div class="stack">
+            <label for="x-height">x-height (mm)</label>
+            <input id="x-height" type="number" step="0.1" value="3.2" />
+          </div>
+          <div class="stack">
+            <label for="line-height">Line height (× x-height)</label>
+            <input id="line-height" type="number" step="0.1" value="2.6" />
+          </div>
+          <div class="stack">
+            <label for="tracking">Tracking</label>
+            <input id="tracking" type="number" step="0.02" value="0.18" />
+          </div>
+          <div class="stack">
+            <label for="seed">Variation seed</label>
+            <input id="seed" type="number" value="7" />
+          </div>
+          <div class="stack">
+            <label for="jitter">Human jitter</label>
+            <input id="jitter" type="range" min="0" max="100" value="55" />
+          </div>
+        </div>
+        <div class="toolbar" style="margin-top:14px;">
+          <button class="btn" id="export-gcode">Download G-code</button>
+          <button class="btn secondary" id="export-dry">Dry-run G-code (pen up)</button>
+          <button class="btn secondary" id="export-svg">Download SVG</button>
+        </div>
+        <div class="card" style="margin-top:14px;">
+          <div class="row">
+            <div class="stack">
+              <label for="stamp-size">Stamp size (mm)</label>
+              <input id="stamp-size" type="number" step="1" value="28" />
+            </div>
+            <div class="stack">
+              <label for="fun-run-count">Fun-run copies</label>
+              <input id="fun-run-count" type="number" min="2" max="16" value="6" />
+            </div>
+            <div class="stack">
+              <label>&nbsp;</label>
+              <div class="toolbar">
+                <button class="btn" id="fun-run">Fun run (parade)</button>
+                <button class="btn ghost" id="clear-stamps">Clear stamps on page</button>
+              </div>
+            </div>
+          </div>
+          <p class="hint" style="margin:10px 0 0;">Select a stamp below, then click the page to plant one. Drag to move. Fun run lays a wiggly row of copies across the lower third — like the same doodle jogging across the paper.</p>
+          <div class="variant-list" id="compose-stamp-list"></div>
+        </div>
+        <p class="missing" id="missing-list"></p>
+        <div class="paper-stage">
+          <div class="canvas-wrap">
+            <canvas id="compose-canvas" width="1400" height="900"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-machine">
+        <h2>Printer &amp; pen</h2>
+        <p class="lede">Mount a pen in the toolhead, tape paper to the bed, and set Z so the nib just kisses the page. Home X/Y only. Watch the first run.</p>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="machine-grid">
+            <div class="stack">
+              <label for="preset">Preset</label>
+              <select id="preset"></select>
+            </div>
+            <div class="stack">
+              <label for="bed-x">Bed X (mm)</label>
+              <input id="bed-x" type="number" />
+            </div>
+            <div class="stack">
+              <label for="bed-y">Bed Y (mm)</label>
+              <input id="bed-y" type="number" />
+            </div>
+            <div class="stack">
+              <label for="origin-x">Paper origin X</label>
+              <input id="origin-x" type="number" />
+            </div>
+            <div class="stack">
+              <label for="origin-y">Paper origin Y</label>
+              <input id="origin-y" type="number" />
+            </div>
+            <div class="stack">
+              <label for="paper-w">Writable width (mm)</label>
+              <input id="paper-w" type="number" />
+            </div>
+            <div class="stack">
+              <label for="paper-h">Writable height (mm)</label>
+              <input id="paper-h" type="number" />
+            </div>
+            <div class="stack">
+              <label for="z-up">Z up (travel)</label>
+              <input id="z-up" type="number" step="0.1" />
+            </div>
+            <div class="stack">
+              <label for="z-down">Z down (write)</label>
+              <input id="z-down" type="number" step="0.1" />
+            </div>
+            <div class="stack">
+              <label for="travel-feed">Travel feed</label>
+              <input id="travel-feed" type="number" />
+            </div>
+            <div class="stack">
+              <label for="write-feed">Write feed</label>
+              <input id="write-feed" type="number" />
+            </div>
+            <div class="stack" id="pen-z-wrap" hidden>
+              <label for="pen-z-offset">A1 pen Z offset (mm)</label>
+              <input id="pen-z-offset" type="number" step="0.5" />
+            </div>
+            <div class="stack">
+              <label for="y-dir">Page down is</label>
+              <select id="y-dir">
+                <option value="neg">−Y (toward front, typical)</option>
+                <option value="pos">+Y (A1: top of page at back of bed)</option>
+              </select>
+            </div>
+          </div>
+          <div class="toolbar" style="margin-top:16px;">
+            <label class="hint"><input type="checkbox" id="home-xy" /> Home X/Y at start (off for A1 — start G-code homes itself)</label>
+            <button class="btn secondary" id="save-machine">Save machine</button>
+            <button class="btn" id="cal-square">Download 20 mm calibration square</button>
+          </div>
+        </div>
+
+        <article class="card" id="a1-help" hidden>
+          <h3 style="margin-top:0;">Bambu Lab A1 setup</h3>
+          <ol class="hint" style="padding-left:1.2rem; line-height:1.55;">
+            <li>Print an <strong>A1</strong> pen holder — not a P1/X1 mount. Start with <a href="https://makerworld.com/en/models/429109-pen-holder-a1-a1-mini-plotter" target="_blank" rel="noopener">Pen Holder A1 / A1 Mini</a> or the simpler <a href="https://makerworld.com/en/models/1362648-easy-penholder-a1-a1-mini" target="_blank" rel="noopener">Easy penholder</a>. The modular <a href="https://makerworld.com/en/models/2029113-modular-system-for-a1-p1-x1-series" target="_blank" rel="noopener">UMTS by Falu</a> also lists an A1 profile.</li>
+            <li>Unload filament. Leave AMS Lite disconnected for this job. Mount the holder per its page, then clamp a fineliner. The nib sits <em>below</em> the nozzle — that gap is <strong>pen Z offset</strong>.</li>
+            <li>Tape paper to a <strong>smooth / cool plate</strong> (textured PEI is lumpy). Put the top of the page toward the <strong>back</strong> of the printer. Keep ~25 mm clear of every bed edge. The start G-code homes the <em>nozzle</em> at <code>X128 Y2</code> so the pen can hang off the rear — do not tape paper into that back strip.</li>
+            <li>Leave pen Z offset at <strong>20 mm</strong> for the first runs (too high is safe; too low crushes the plate). Z down = 0 after that offset is zeroed.</li>
+            <li>Export a <strong>dry-run</strong> first (pen stays up). Copy the <code>.gcode</code> to the <strong>root</strong> of the A1 MicroSD card. The card is <em>not</em> hot-swappable: on the screen, eject it before pulling it. Wiki: <a href="https://wiki.bambulab.com/en/a1/manual/how-to-print-from-sd-card" target="_blank" rel="noopener">print from SD card</a>.</li>
+            <li>Print Files → your file. Turn <strong>off</strong> bed leveling, flow/nozzle calibration, AMS, and spaghetti detection if the start dialog offers them. Stay next to the machine for Z home. If the pen hits the bed before the nozzle does, abort immediately and increase the offset — or make sure Y2 actually clears the pen off the plate.</li>
+            <li>When the dry-run path looks right, run the 20 mm square. Lower pen Z offset a millimeter at a time until the square is a clean line, then write a short word.</li>
+          </ol>
+          <p class="hint">A1 volume is 256×256×256 mm. This sequence is the A1-Mini plotter start G-code with X/Y limits changed for the full A1 (center X128, present at Y254). Watch the first home. Do not home Z from the stock print profile with a pen mounted.</p>
+        </article>
+
+        <p class="hint" id="generic-machine-hint">
+          Origin is the top-left of the writing area in machine coordinates, after homing.
+          Start with a dry-run, then the 20 mm square, then a short word. If firmware blocks cold motion, enable “allow cold extrusion” / <code>M302</code> on Marlin.
+        </p>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

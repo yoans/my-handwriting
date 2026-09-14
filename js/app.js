@@ -1,0 +1,860 @@
+import {
+  loadLibrary, exportLibrary, importLibrary,
+  addGlyph, removeGlyph, addWord, removeWord, glyphCount,
+  addStamp, removeStamp, loadPlacements, savePlacements,
+  loadMachine, saveMachine, PRESETS, DEFAULT_MACHINE,
+} from "./library.js";
+import { dist, simplifyStroke, boundsOfStrokes } from "./geometry.js";
+import { layoutText, normalizeStrokes, strokesToSvg } from "./layout.js";
+import { strokesToGcode, calibrationSquareGcode } from "./gcode.js";
+import { imageDataToStamp, rasterToImageData } from "./trace.js";
+import { placementsToStrokes, funRunPlacements, hitTestPlacement } from "./stamps.js";
+
+const CHARSET = [
+  ..."abcdefghijklmnopqrstuvwxyz",
+  ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+  ..."0123456789",
+  ...`.,;:!?-'"()/`,
+];
+
+const GUIDES = {
+  left: 0.11,
+  cap: 0.2,
+  xHeight: 0.4,
+  baseline: 0.7,
+  descender: 0.88,
+};
+
+let library = loadLibrary();
+let machine = loadMachine();
+let strokes = [];
+let currentStroke = null;
+let overlay = { img: null, opacity: 0.35 };
+let selectedVariant = 0;
+let lastCompose = { strokes: [] };
+let stampImage = null;
+let lastTrace = null;
+let placements = loadPlacements();
+let selectedStampId = null;
+let selectedPlacement = -1;
+let dragging = null;
+let composeView = { scale: 1, ox: 40, oy: 40 };
+
+const $ = (id) => document.getElementById(id);
+
+function setStatus(msg) {
+  $("capture-status").textContent = msg;
+}
+
+function download(filename, text, mime = "text/plain") {
+  const blob = new Blob([text], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function canvasPoint(canvas, event) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  return {
+    x: (event.clientX - rect.left) * scaleX,
+    y: (event.clientY - rect.top) * scaleY,
+  };
+}
+
+function guidePx(canvas) {
+  return {
+    left: canvas.width * GUIDES.left,
+    cap: canvas.height * GUIDES.cap,
+    xHeight: canvas.height * GUIDES.xHeight,
+    baseline: canvas.height * GUIDES.baseline,
+    descender: canvas.height * GUIDES.descender,
+  };
+}
+
+function drawCapture() {
+  const canvas = $("capture-canvas");
+  const ctx = canvas.getContext("2d");
+  const g = guidePx(canvas);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "#f3ead6";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  if (overlay.img) {
+    ctx.save();
+    ctx.globalAlpha = overlay.opacity;
+    const img = overlay.img;
+    const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+    const w = img.width * scale;
+    const h = img.height * scale;
+    ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+    ctx.restore();
+  }
+
+  ctx.lineWidth = 1;
+  const lines = [
+    [g.cap, "#8b3a32", "cap"],
+    [g.xHeight, "#3f6b58", "x-height"],
+    [g.baseline, "#1c1712", "baseline"],
+    [g.descender, "#6b5a8c", "descender"],
+  ];
+  for (const [y, color, label] of lines) {
+    ctx.strokeStyle = color;
+    ctx.setLineDash([6, 8]);
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(canvas.width, y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = color;
+    ctx.font = "18px Georgia, serif";
+    ctx.fillText(label, 16, y - 8);
+  }
+
+  ctx.strokeStyle = "rgba(28,23,18,0.35)";
+  ctx.beginPath();
+  ctx.moveTo(g.left, 0);
+  ctx.lineTo(g.left, canvas.height);
+  ctx.stroke();
+
+  const ink = [...strokes];
+  if (currentStroke?.length) ink.push(currentStroke);
+  ctx.strokeStyle = "#1c1712";
+  ctx.lineWidth = 3.2;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  for (const stroke of ink) {
+    if (stroke.length < 2) continue;
+    ctx.beginPath();
+    ctx.moveTo(stroke[0].x, stroke[0].y);
+    for (let i = 1; i < stroke.length; i++) ctx.lineTo(stroke[i].x, stroke[i].y);
+    ctx.stroke();
+  }
+}
+
+function drawCompose() {
+  const canvas = $("compose-canvas");
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#f3ead6";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const jitterAmt = Number($("jitter").value) / 100;
+  const result = layoutText(library, $("note-text").value, {
+    xHeightMm: Number($("x-height").value) || 3.2,
+    tracking: Number($("tracking").value) || 0.18,
+    lineHeight: Number($("line-height").value) || 2.6,
+    maxWidth: Number(machine.paperWidth) || 170,
+    seed: Number($("seed").value) || 1,
+    jitter: {
+      size: jitterAmt * 0.1,
+      rotation: jitterAmt * 4,
+      baseline: jitterAmt * 0.14,
+    },
+    marginLeft: 8,
+    marginTop: 6,
+  });
+  const stampStrokes = placementsToStrokes(library, placements);
+  const allStrokes = result.strokes.concat(stampStrokes);
+  lastCompose = {
+    strokes: allStrokes,
+    missing: result.missing,
+    bounds: boundsOfStrokes(allStrokes),
+  };
+
+  const scale = Math.min(
+    (canvas.width - 80) / machine.paperWidth,
+    (canvas.height - 80) / machine.paperHeight,
+  );
+  const ox = 40;
+  const oy = 40;
+  composeView = { scale, ox, oy };
+
+  ctx.strokeStyle = "rgba(28,23,18,0.25)";
+  ctx.strokeRect(ox, oy, machine.paperWidth * scale, machine.paperHeight * scale);
+
+  const drawInk = (strokeList, color, width) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    for (const stroke of strokeList) {
+      if (stroke.length < 2) continue;
+      ctx.beginPath();
+      ctx.moveTo(ox + stroke[0].x * scale, oy + stroke[0].y * scale);
+      for (let i = 1; i < stroke.length; i++) {
+        ctx.lineTo(ox + stroke[i].x * scale, oy + stroke[i].y * scale);
+      }
+      ctx.stroke();
+    }
+  };
+  drawInk(result.strokes, "#1c1712", Math.max(1.4, scale * 0.35));
+  drawInk(stampStrokes, "#5a2c24", Math.max(1.2, scale * 0.32));
+
+  if (selectedPlacement >= 0 && placements[selectedPlacement]) {
+    const p = placements[selectedPlacement];
+    const half = (p.sizeMm || 28) / 2;
+    ctx.strokeStyle = "#8b3a32";
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(
+      ox + (p.x - half) * scale,
+      oy + (p.y - half) * scale,
+      half * 2 * scale,
+      half * 2 * scale,
+    );
+    ctx.setLineDash([]);
+  }
+
+  const miss = $("missing-list");
+  const parts = [];
+  if (result.missing.length) parts.push(`Missing from library: ${result.missing.join(" ")}`);
+  if (allStrokes.length) {
+    parts.push(`${allStrokes.length} strokes · ${lastCompose.bounds.width.toFixed(0)} × ${lastCompose.bounds.height.toFixed(0)} mm`);
+    if (placements.length) parts.push(`${placements.length} stamp${placements.length === 1 ? "" : "s"}`);
+    if (lastCompose.bounds.maxX > machine.paperWidth || lastCompose.bounds.maxY > machine.paperHeight) {
+      parts.push("This note is larger than the writable area — shrink x-height or paper margins.");
+    }
+  } else parts.push("Nothing to draw yet. Capture letters and/or stamp a drawing.");
+  miss.textContent = parts.join(" · ");
+}
+
+function renderGrid() {
+  const grid = $("glyph-grid");
+  grid.innerHTML = "";
+  const current = $("glyph-target").value;
+  for (const ch of CHARSET) {
+    const btn = document.createElement("button");
+    btn.className = "glyph-cell";
+    const n = glyphCount(library, ch);
+    if (n >= 2) btn.classList.add("has-many");
+    else if (n === 1) btn.classList.add("has-one");
+    if (ch === current) btn.classList.add("active");
+    btn.type = "button";
+    btn.textContent = ch === " " ? "␣" : ch;
+    const count = document.createElement("span");
+    count.className = "count";
+    count.textContent = n || "";
+    btn.appendChild(count);
+    btn.addEventListener("click", () => {
+      $("glyph-target").value = ch;
+      $("capture-mode").value = "glyph";
+      syncMode();
+      renderGrid();
+      renderVariants();
+    });
+    grid.appendChild(btn);
+  }
+}
+
+function drawThumb(glyph) {
+  const c = document.createElement("canvas");
+  c.width = 72;
+  c.height = 72;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#f3ead6";
+  ctx.fillRect(0, 0, 72, 72);
+  const b = boundsOfStrokes(glyph.strokes);
+  const pad = 8;
+  const sx = (72 - pad * 2) / Math.max(b.width, 0.4);
+  const sy = (72 - pad * 2) / Math.max(b.height, 0.4);
+  const s = Math.min(sx, sy);
+  ctx.strokeStyle = "#1c1712";
+  ctx.lineWidth = 1.4;
+  ctx.lineCap = "round";
+  for (const stroke of glyph.strokes) {
+    if (stroke.length < 2) continue;
+    ctx.beginPath();
+    for (let i = 0; i < stroke.length; i++) {
+      const x = pad + (stroke[i].x - b.minX) * s;
+      const y = 72 - pad - (stroke[i].y - b.minY) * s;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  return c;
+}
+
+function renderVariants() {
+  const mode = $("capture-mode").value;
+  const list = $("variant-list");
+  list.innerHTML = "";
+  const items = mode === "word"
+    ? library.words[$("word-target").value] || []
+    : library.glyphs[$("glyph-target").value] || [];
+  items.forEach((glyph, index) => {
+    const btn = document.createElement("button");
+    btn.className = "variant-thumb" + (index === selectedVariant ? " selected" : "");
+    btn.type = "button";
+    btn.title = "Click to delete this variant";
+    btn.appendChild(drawThumb(glyph));
+    btn.addEventListener("click", () => {
+      if (!confirm("Delete this variant?")) return;
+      if (mode === "word") removeWord(library, $("word-target").value, index);
+      else removeGlyph(library, $("glyph-target").value, index);
+      library = loadLibrary();
+      renderGrid();
+      renderVariants();
+      drawCompose();
+    });
+    list.appendChild(btn);
+  });
+  if (!items.length) {
+    list.innerHTML = `<p class="hint">No variants saved yet for this ${mode}.</p>`;
+  }
+}
+
+function syncMode() {
+  const mode = $("capture-mode").value;
+  $("glyph-target-wrap").hidden = mode !== "glyph";
+  $("word-target-wrap").hidden = mode !== "word";
+  $("save-capture").textContent = mode === "page" ? "Export traced G-code" : "Save into library";
+  renderVariants();
+  drawCapture();
+}
+
+function saveCapture() {
+  const mode = $("capture-mode").value;
+  if (!strokes.length) {
+    setStatus("Draw something first.");
+    return;
+  }
+  const canvas = $("capture-canvas");
+  const simplified = strokes.map((s) => simplifyStroke(s, 1.1));
+
+  if (mode === "page") {
+    const mmPerPx = machine.paperWidth / canvas.width;
+    const pageStrokes = simplified.map((stroke) =>
+      stroke.map((p) => ({ x: p.x * mmPerPx, y: p.y * mmPerPx })),
+    );
+    lastCompose = { strokes: pageStrokes, missing: [], bounds: boundsOfStrokes(pageStrokes) };
+    const { gcode, warnings } = strokesToGcode(pageStrokes, machine, { title: "traced-page" });
+    download("traced-page.gcode", gcode);
+    setStatus(warnings.length ? `Exported with warnings: ${warnings[0]}` : "Exported traced page G-code.");
+    return;
+  }
+
+  const glyph = normalizeStrokes(simplified, guidePx(canvas));
+  if (mode === "word") {
+    const word = $("word-target").value;
+    if (!word) { setStatus("Type the word you just wrote."); return; }
+    addWord(library, word, glyph);
+  } else {
+    const ch = $("glyph-target").value;
+    if (!ch) { setStatus("Set the character you just wrote."); return; }
+    addGlyph(library, ch, glyph);
+  }
+  library = loadLibrary();
+  strokes = [];
+  renderGrid();
+  renderVariants();
+  drawCapture();
+  drawCompose();
+  setStatus("Saved. Capture another variant — three to five per letter looks far more human.");
+}
+
+function paperFromEvent(canvas, event) {
+  const p = canvasPoint(canvas, event);
+  return {
+    x: (p.x - composeView.ox) / composeView.scale,
+    y: (p.y - composeView.oy) / composeView.scale,
+  };
+}
+
+function retraceStamp() {
+  if (!stampImage) return;
+  lastTrace = imageDataToStamp(rasterToImageData(stampImage), {
+    threshold: Number($("trace-threshold").value),
+    invert: $("trace-invert").checked,
+    mode: $("trace-mode").value,
+    joinGaps: Number($("trace-join").value),
+    minBlob: 18,
+    simplify: 1.5,
+  });
+  drawStampPreview();
+  $("stamp-status").textContent = lastTrace.count
+    ? `${lastTrace.count} paths ready. Save, then stamp them onto Compose.`
+    : "No ink found — try a lower threshold, invert, or a higher-contrast photo.";
+}
+
+function drawStampPreview() {
+  const canvas = $("stamp-canvas");
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#f3ead6";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (!stampImage) {
+    ctx.fillStyle = "#4a4036";
+    ctx.font = "28px Georgia, serif";
+    ctx.fillText("Drop a photo of a drawing here.", 48, canvas.height / 2);
+    return;
+  }
+  if (!lastTrace) return;
+  const { preview, w, h, strokes } = lastTrace;
+  const split = canvas.width / 2;
+  const s = Math.min(split / w, canvas.height / h) * 0.92;
+  const ox = (split - w * s) / 2;
+  const oy = (canvas.height - h * s) / 2;
+  const img = ctx.createImageData(w, h);
+  for (let i = 0; i < w * h; i++) {
+    const v = preview[i] ? 28 : 243;
+    img.data[i * 4] = preview[i] ? 28 : 243;
+    img.data[i * 4 + 1] = preview[i] ? 23 : 234;
+    img.data[i * 4 + 2] = preview[i] ? 18 : 214;
+    img.data[i * 4 + 3] = 255;
+    if (!preview[i]) {
+      img.data[i * 4] = v;
+    }
+  }
+  const tmp = document.createElement("canvas");
+  tmp.width = w;
+  tmp.height = h;
+  tmp.getContext("2d").putImageData(img, 0, 0);
+  ctx.drawImage(tmp, ox, oy, w * s, h * s);
+
+  ctx.strokeStyle = "rgba(28,23,18,0.2)";
+  ctx.beginPath();
+  ctx.moveTo(split, 0);
+  ctx.lineTo(split, canvas.height);
+  ctx.stroke();
+
+  const b = boundsOfStrokes(strokes);
+  const span = Math.max(b.width, b.height, 0.001);
+  const ps = Math.min((canvas.width - split - 40) / span, (canvas.height - 40) / span);
+  const px = split + 20;
+  const py = 20;
+  ctx.strokeStyle = "#1c1712";
+  ctx.lineWidth = 2;
+  ctx.lineCap = "round";
+  for (const stroke of strokes) {
+    if (stroke.length < 2) continue;
+    ctx.beginPath();
+    ctx.moveTo(px + stroke[0].x * ps, py + stroke[0].y * ps);
+    for (let i = 1; i < stroke.length; i++) ctx.lineTo(px + stroke[i].x * ps, py + stroke[i].y * ps);
+    ctx.stroke();
+  }
+  ctx.fillStyle = "#4a4036";
+  ctx.font = "16px Georgia, serif";
+  ctx.fillText("ink mask", 24, 28);
+  ctx.fillText("pen paths", split + 20, 28);
+}
+
+function loadStampFile(file) {
+  if (!file) return;
+  const img = new Image();
+  img.onload = () => {
+    stampImage = img;
+    if ($("stamp-name").value === "doodle") {
+      $("stamp-name").value = file.name.replace(/\.[^.]+$/, "").slice(0, 40) || "doodle";
+    }
+    retraceStamp();
+  };
+  img.src = URL.createObjectURL(file);
+}
+
+function renderStampLists() {
+  const makeThumb = (stamp, onClick, selected) => {
+    const btn = document.createElement("button");
+    btn.className = "variant-thumb" + (selected ? " selected" : "");
+    btn.type = "button";
+    btn.title = stamp.name || "stamp";
+    const c = document.createElement("canvas");
+    c.width = 72;
+    c.height = 72;
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#f3ead6";
+    ctx.fillRect(0, 0, 72, 72);
+    const b = boundsOfStrokes(stamp.strokes);
+    const pad = 8;
+    const s = Math.min((72 - pad * 2) / Math.max(b.width, 0.01), (72 - pad * 2) / Math.max(b.height, 0.01));
+    ctx.strokeStyle = "#1c1712";
+    ctx.lineWidth = 1.3;
+    ctx.lineCap = "round";
+    for (const stroke of stamp.strokes) {
+      if (stroke.length < 2) continue;
+      ctx.beginPath();
+      for (let i = 0; i < stroke.length; i++) {
+        const x = pad + (stroke[i].x - b.minX) * s;
+        const y = pad + (stroke[i].y - b.minY) * s;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+    btn.appendChild(c);
+    const cap = document.createElement("span");
+    cap.className = "stamp-caption";
+    cap.textContent = stamp.name || "stamp";
+    btn.appendChild(cap);
+    btn.addEventListener("click", onClick);
+    return btn;
+  };
+
+  const box = $("stamp-list");
+  const composeBox = $("compose-stamp-list");
+  box.innerHTML = "";
+  composeBox.innerHTML = "";
+  const stamps = library.stamps || [];
+  if (!stamps.length) {
+    box.innerHTML = `<p class="hint">No stamps yet.</p>`;
+    composeBox.innerHTML = `<p class="hint">Scan a drawing in Stamps first.</p>`;
+    return;
+  }
+  if (!selectedStampId || !stamps.some((s) => s.id === selectedStampId)) {
+    selectedStampId = stamps[0].id;
+  }
+  for (const stamp of stamps) {
+    box.appendChild(makeThumb(stamp, () => {
+      if (selectedStampId === stamp.id && confirm(`Delete stamp “${stamp.name}”?`)) {
+        removeStamp(library, stamp.id);
+        library = loadLibrary();
+        placements = placements.filter((p) => p.stampId !== stamp.id);
+        savePlacements(placements);
+        selectedStampId = library.stamps[0]?.id || null;
+        renderStampLists();
+        drawCompose();
+        return;
+      }
+      selectedStampId = stamp.id;
+      renderStampLists();
+    }, stamp.id === selectedStampId));
+    composeBox.appendChild(makeThumb(stamp, () => {
+      selectedStampId = stamp.id;
+      renderStampLists();
+    }, stamp.id === selectedStampId));
+  }
+}
+
+function persistPlacements() {
+  savePlacements(placements);
+  drawCompose();
+}
+
+function wireComposeCanvas() {
+  const canvas = $("compose-canvas");
+  canvas.addEventListener("pointerdown", (e) => {
+    canvas.setPointerCapture(e.pointerId);
+    const paper = paperFromEvent(canvas, e);
+    const hit = hitTestPlacement(library, placements, paper.x, paper.y);
+    if (hit >= 0) {
+      selectedPlacement = hit;
+      dragging = { i: hit, dx: paper.x - placements[hit].x, dy: paper.y - placements[hit].y };
+      drawCompose();
+      return;
+    }
+    const stamp = library.stamps?.find((s) => s.id === selectedStampId);
+    if (!stamp) return;
+    if (paper.x < 0 || paper.y < 0 || paper.x > machine.paperWidth || paper.y > machine.paperHeight) return;
+    placements.push({
+      id: `p_${Date.now()}`,
+      stampId: stamp.id,
+      x: paper.x,
+      y: paper.y,
+      sizeMm: Number($("stamp-size").value) || 28,
+      rotation: (Math.random() - 0.5) * 16,
+    });
+    selectedPlacement = placements.length - 1;
+    persistPlacements();
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if (dragging == null) return;
+    const paper = paperFromEvent(canvas, e);
+    const p = placements[dragging.i];
+    if (!p) return;
+    p.x = paper.x - dragging.dx;
+    p.y = paper.y - dragging.dy;
+    drawCompose();
+  });
+  const endDrag = () => {
+    if (dragging != null) savePlacements(placements);
+    dragging = null;
+  };
+  canvas.addEventListener("pointerup", endDrag);
+  canvas.addEventListener("pointercancel", endDrag);
+}
+
+function wireCapture() {
+  const canvas = $("capture-canvas");
+  canvas.addEventListener("pointerdown", (e) => {
+    canvas.setPointerCapture(e.pointerId);
+    currentStroke = [canvasPoint(canvas, e)];
+    drawCapture();
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if (!currentStroke) return;
+    const p = canvasPoint(canvas, e);
+    const last = currentStroke[currentStroke.length - 1];
+    if (dist(p, last) >= 1.6) currentStroke.push(p);
+    drawCapture();
+  });
+  const end = () => {
+    if (currentStroke && currentStroke.length > 1) strokes.push(currentStroke);
+    currentStroke = null;
+    drawCapture();
+  };
+  canvas.addEventListener("pointerup", end);
+  canvas.addEventListener("pointercancel", end);
+}
+
+function isA1() {
+  return $("preset").value === "bambu_a1";
+}
+
+function syncMachineHelp() {
+  const a1 = isA1();
+  $("a1-help").hidden = !a1;
+  $("generic-machine-hint").hidden = a1;
+  $("pen-z-wrap").hidden = !a1;
+}
+
+function fillMachineForm() {
+  const preset = $("preset");
+  preset.innerHTML = Object.entries(PRESETS).map(([id, p]) =>
+    `<option value="${id}">${p.label}</option>`,
+  ).join("");
+  preset.value = machine.preset in PRESETS ? machine.preset : "marlin";
+  $("bed-x").value = machine.bedX;
+  $("bed-y").value = machine.bedY;
+  $("origin-x").value = machine.originX;
+  $("origin-y").value = machine.originY;
+  $("paper-w").value = machine.paperWidth;
+  $("paper-h").value = machine.paperHeight;
+  $("z-up").value = machine.zUp;
+  $("z-down").value = machine.zDown;
+  $("travel-feed").value = machine.travelFeed;
+  $("write-feed").value = machine.writeFeed;
+  $("y-dir").value = machine.yDownIsNegative ? "neg" : "pos";
+  $("home-xy").checked = machine.homeXY;
+  $("pen-z-offset").value = machine.penZOffset ?? 20;
+  syncMachineHelp();
+}
+
+function applyPresetToForm(p) {
+  $("bed-x").value = p.bedX;
+  $("bed-y").value = p.bedY;
+  $("origin-x").value = p.originX;
+  $("origin-y").value = p.originY;
+  if (p.paperWidth != null) $("paper-w").value = p.paperWidth;
+  if (p.paperHeight != null) $("paper-h").value = p.paperHeight;
+  if (p.zUp != null) $("z-up").value = p.zUp;
+  if (p.zDown != null) $("z-down").value = p.zDown;
+  if (p.travelFeed != null) $("travel-feed").value = p.travelFeed;
+  if (p.writeFeed != null) $("write-feed").value = p.writeFeed;
+  if (p.yDownIsNegative != null) $("y-dir").value = p.yDownIsNegative ? "neg" : "pos";
+  if (p.homeXY != null) $("home-xy").checked = p.homeXY;
+  if (p.penZOffset != null) $("pen-z-offset").value = p.penZOffset;
+}
+
+function readMachineForm() {
+  machine = {
+    ...DEFAULT_MACHINE,
+    ...machine,
+    preset: $("preset").value,
+    bedX: Number($("bed-x").value),
+    bedY: Number($("bed-y").value),
+    originX: Number($("origin-x").value),
+    originY: Number($("origin-y").value),
+    paperWidth: Number($("paper-w").value),
+    paperHeight: Number($("paper-h").value),
+    zUp: Number($("z-up").value),
+    zDown: Number($("z-down").value),
+    travelFeed: Number($("travel-feed").value),
+    writeFeed: Number($("write-feed").value),
+    yDownIsNegative: $("y-dir").value === "neg",
+    homeXY: $("home-xy").checked,
+    flavor: PRESETS[$("preset").value]?.flavor || "marlin",
+    penZOffset: Number($("pen-z-offset").value) || 20,
+  };
+  saveMachine(machine);
+  syncMachineHelp();
+}
+
+function exportNote(dryRun) {
+  drawCompose();
+  if (!lastCompose.strokes.length) {
+    alert("Nothing to export. Capture letters and/or stamp a drawing first.");
+    return;
+  }
+  const { gcode, warnings } = strokesToGcode(lastCompose.strokes, machine, {
+    dryRun,
+    title: dryRun ? "note-dry-run" : "note",
+  });
+  download(dryRun ? "note-dry-run.gcode" : "note.gcode", gcode);
+  if (warnings.length) alert(`Exported, but check bed bounds:\n${warnings.slice(0, 6).join("\n")}`);
+}
+
+function initNav() {
+  document.querySelectorAll(".nav-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".nav-btn").forEach((b) => b.removeAttribute("aria-current"));
+      btn.setAttribute("aria-current", "page");
+      document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+      $(`panel-${btn.dataset.panel}`).classList.add("active");
+      if (btn.dataset.panel === "compose") drawCompose();
+      if (btn.dataset.panel === "stamps") drawStampPreview();
+    });
+  });
+}
+
+function init() {
+  initNav();
+  wireCapture();
+  fillMachineForm();
+  renderGrid();
+  renderVariants();
+  renderStampLists();
+  drawCapture();
+  drawStampPreview();
+  drawCompose();
+  wireComposeCanvas();
+
+  $("capture-mode").addEventListener("change", syncMode);
+  $("glyph-target").addEventListener("input", () => {
+    if ($("glyph-target").value.length > 1) {
+      $("glyph-target").value = $("glyph-target").value.slice(-1);
+    }
+    renderGrid();
+    renderVariants();
+  });
+  $("word-target").addEventListener("input", renderVariants);
+  $("undo-stroke").addEventListener("click", () => { strokes.pop(); drawCapture(); });
+  $("clear-strokes").addEventListener("click", () => { strokes = []; drawCapture(); });
+  $("save-capture").addEventListener("click", saveCapture);
+  $("load-overlay").addEventListener("click", () => $("overlay-file").click());
+  $("overlay-file").addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const img = new Image();
+    img.onload = () => { overlay.img = img; drawCapture(); };
+    img.src = URL.createObjectURL(file);
+  });
+  $("clear-overlay").addEventListener("click", () => { overlay.img = null; drawCapture(); });
+  $("overlay-opacity").addEventListener("input", (e) => {
+    overlay.opacity = Number(e.target.value) / 100;
+    drawCapture();
+  });
+
+  ["note-text", "x-height", "line-height", "tracking", "seed", "jitter"].forEach((id) => {
+    $(id).addEventListener("input", drawCompose);
+  });
+  $("load-stamp-image").addEventListener("click", () => $("stamp-file").click());
+  $("stamp-camera").addEventListener("click", () => $("stamp-camera-file").click());
+  $("stamp-file").addEventListener("change", (e) => loadStampFile(e.target.files?.[0]));
+  $("stamp-camera-file").addEventListener("change", (e) => loadStampFile(e.target.files?.[0]));
+  $("stamp-canvas").addEventListener("dragover", (e) => e.preventDefault());
+  $("stamp-canvas").addEventListener("drop", (e) => {
+    e.preventDefault();
+    loadStampFile(e.dataTransfer.files?.[0]);
+  });
+  ["trace-mode", "trace-threshold", "trace-join", "trace-invert"].forEach((id) => {
+    $(id).addEventListener("input", retraceStamp);
+    $(id).addEventListener("change", retraceStamp);
+  });
+  $("save-stamp").addEventListener("click", () => {
+    if (!lastTrace?.count) {
+      $("stamp-status").textContent = "Trace a drawing first.";
+      return;
+    }
+    const stamp = {
+      id: `stamp_${Date.now()}`,
+      name: $("stamp-name").value.trim() || "doodle",
+      strokes: lastTrace.strokes,
+      width: lastTrace.width,
+      height: lastTrace.height,
+    };
+    addStamp(library, stamp);
+    library = loadLibrary();
+    selectedStampId = stamp.id;
+    renderStampLists();
+    $("stamp-status").textContent = `Saved “${stamp.name}”. Open Compose, then click the page or Fun run.`;
+  });
+  $("fun-run").addEventListener("click", () => {
+    const stamp = library.stamps?.find((s) => s.id === selectedStampId);
+    if (!stamp) {
+      alert("Save a stamp first.");
+      return;
+    }
+    const row = funRunPlacements(stamp, {
+      paperWidth: machine.paperWidth,
+      paperHeight: machine.paperHeight,
+      count: Number($("fun-run-count").value) || 6,
+      seed: (Number($("seed").value) || 1) + placements.length,
+      sizeMm: Number($("stamp-size").value) || 28,
+    });
+    placements.push(...row);
+    persistPlacements();
+  });
+  $("clear-stamps").addEventListener("click", () => {
+    placements = [];
+    selectedPlacement = -1;
+    persistPlacements();
+  });
+  $("stamp-size").addEventListener("change", () => {
+    if (selectedPlacement >= 0 && placements[selectedPlacement]) {
+      placements[selectedPlacement].sizeMm = Number($("stamp-size").value) || 28;
+      persistPlacements();
+    }
+  });
+  $("export-gcode").addEventListener("click", () => exportNote(false));
+  $("export-dry").addEventListener("click", () => exportNote(true));
+  $("export-svg").addEventListener("click", () => {
+    drawCompose();
+    download("note.svg", strokesToSvg(lastCompose.strokes), "image/svg+xml");
+  });
+
+  $("preset").addEventListener("change", () => {
+    const p = PRESETS[$("preset").value];
+    if (!p) return;
+    applyPresetToForm(p);
+    readMachineForm();
+    drawCompose();
+  });
+  ["bed-x", "bed-y", "origin-x", "origin-y", "paper-w", "paper-h", "z-up", "z-down", "travel-feed", "write-feed", "y-dir", "home-xy", "pen-z-offset"].forEach((id) => {
+    $(id).addEventListener("change", () => { readMachineForm(); drawCompose(); });
+  });
+  $("save-machine").addEventListener("click", () => { readMachineForm(); setStatus("Printer settings saved."); });
+  $("cal-square").addEventListener("click", () => {
+    readMachineForm();
+    download("calibration-20mm.gcode", calibrationSquareGcode(machine).gcode);
+  });
+
+  $("export-library").addEventListener("click", () => {
+    download("handwriting-library.json", exportLibrary(library), "application/json");
+  });
+  $("import-library").addEventListener("click", () => $("import-file").click());
+  $("import-file").addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      library = importLibrary(await file.text());
+      renderGrid();
+      renderVariants();
+      renderStampLists();
+      drawCompose();
+      setStatus("Library imported.");
+    } catch (err) {
+      alert("Could not import that file: " + err.message);
+    }
+  });
+
+  window.addEventListener("keydown", (e) => {
+    if (e.target.matches("input, textarea")) return;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+      e.preventDefault();
+      strokes.pop();
+      drawCapture();
+    }
+    if ((e.key === "Delete" || e.key === "Backspace") && selectedPlacement >= 0) {
+      e.preventDefault();
+      placements.splice(selectedPlacement, 1);
+      selectedPlacement = -1;
+      persistPlacements();
+    }
+  });
+}
+
+init();
