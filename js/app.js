@@ -10,7 +10,7 @@ import { imageDataToStamp, rasterToImageData } from "./trace.js";
 import { placementsToStrokes, funRunPlacements, hitTestPlacement } from "./stamps.js";
 import {
   loadProject, persistProject, projectToJson, parseIncomingFile,
-  mergeLibraries, backupFilename,
+  mergeLibraries, backupFilename, wipeStoredProject, emptyProject,
 } from "./persist.js";
 
 const CHARSET = [
@@ -56,7 +56,7 @@ function collectProject() {
       text: $("note-text").value,
       xHeight: Number($("x-height").value) || 3.2,
       lineHeight: Number($("line-height").value) || 2.6,
-      tracking: Number($("tracking").value) || 0.18,
+      tracking: Number($("tracking").value) || 0.14,
       seed: Number($("seed").value) || 7,
       jitter: Number($("jitter").value) || 0,
       stampSize: Number($("stamp-size").value) || 28,
@@ -90,7 +90,7 @@ function applyProject(project) {
   $("note-text").value = project.compose?.text ?? "";
   $("x-height").value = project.compose?.xHeight ?? 3.2;
   $("line-height").value = project.compose?.lineHeight ?? 2.6;
-  $("tracking").value = project.compose?.tracking ?? 0.18;
+  $("tracking").value = project.compose?.tracking ?? 0.14;
   $("seed").value = project.compose?.seed ?? 7;
   $("jitter").value = project.compose?.jitter ?? 55;
   $("stamp-size").value = project.compose?.stampSize ?? 28;
@@ -254,7 +254,7 @@ function drawCompose() {
   const jitterAmt = Number($("jitter").value) / 100;
   const result = layoutText(library, $("note-text").value, {
     xHeightMm: Number($("x-height").value) || 3.2,
-    tracking: Number($("tracking").value) || 0.18,
+    tracking: Number($("tracking").value) || 0.14,
     lineHeight: Number($("line-height").value) || 2.6,
     maxWidth: Number(machine.paperWidth) || 170,
     seed: Number($("seed").value) || 1,
@@ -959,6 +959,20 @@ function init() {
   $("merge-project").addEventListener("click", () => {
     importMode = "merge";
     $("import-file").click();
+  });
+  $("reset-all").addEventListener("click", async () => {
+    const ok = confirm("Reset all? This deletes every letter, word, stamp, note, and printer setting saved in this browser. Download a backup first if you might want it back.");
+    if (!ok) return;
+    overlay = { img: null, opacity: overlay.opacity };
+    stampImage = null;
+    lastTrace = null;
+    selectedPlacement = -1;
+    dragging = null;
+    await wipeStoredProject();
+    applyProject(emptyProject());
+    await autosave(true);
+    setStatus("Everything in this browser was cleared.");
+    $("save-status").textContent = "Reset complete. This browser is empty.";
   });
   $("import-file").addEventListener("change", async (e) => {
     const file = e.target.files?.[0];

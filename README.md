@@ -14,7 +14,7 @@ The reliable path:
 
 1. Capture **ordered strokes** for each letter (and a few whole words).
 2. Optionally trace a photo of existing samples so the path matches how you actually write.
-3. Compose new text from those glyphs, with small variation so it does not look like a font.
+3. Compose new text from those glyphs, with small variation so it does not look like a font. Letter spacing is optical: each pair is kerned from the actual stroke outlines (AV, To, WA slide together).
 4. Emit G-code: travel with Z up, write with Z down, no extrusion, no heat.
 
 Open the [live app](https://yoans.github.io/my-handwriting/) or `index.html` in a current browser (Chrome, Edge, Safari, or Firefox). On a tablet, add the Pages site to your home screen so it feels like an app. A local server is not required.

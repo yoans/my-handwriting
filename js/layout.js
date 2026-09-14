@@ -22,7 +22,7 @@ function longestWordMatch(library, text, i) {
 
 function placeGlyphAt(glyph, x, baselineY, scale, jitter, rand) {
   const rot = ((rand() - 0.5) * 2 * jitter.rotation * Math.PI) / 180;
-  const dy = (rand() - 0.5) * 2 * jitter.baseline * scale;
+  const dy = ((rand() - 0.5) * 2 * jitter.baseline * scale);
   const cos = Math.cos(rot);
   const sin = Math.sin(rot);
   return transformStrokes(glyph.strokes, (p) => {
@@ -35,10 +35,69 @@ function placeGlyphAt(glyph, x, baselineY, scale, jitter, rand) {
   });
 }
 
+function translateStrokes(strokes, dx, dy = 0) {
+  if (dx === 0 && dy === 0) return strokes;
+  return transformStrokes(strokes, (p) => ({ x: p.x + dx, y: p.y + dy }));
+}
+
+function extremeXAtY(strokes, y, mode, band) {
+  let best = null;
+  const consider = (x) => {
+    if (best == null) best = x;
+    else best = mode === "max" ? Math.max(best, x) : Math.min(best, x);
+  };
+  for (const stroke of strokes) {
+    for (let i = 0; i < stroke.length; i++) {
+      const p = stroke[i];
+      if (Math.abs(p.y - y) <= band) consider(p.x);
+      if (i === 0) continue;
+      const q = stroke[i - 1];
+      const lo = Math.min(p.y, q.y);
+      const hi = Math.max(p.y, q.y);
+      if (y < lo - band || y > hi + band) continue;
+      if (Math.abs(p.y - q.y) < 1e-9) {
+        consider(p.x);
+        consider(q.x);
+        continue;
+      }
+      const t = (y - q.y) / (p.y - q.y);
+      if (t >= 0 && t <= 1) consider(q.x + t * (p.x - q.x));
+    }
+  }
+  return best;
+}
+
+/** Horizontal shift to apply to `next` so ink-to-ink gap ≈ targetGap. */
+export function opticalKernShift(prev, next, targetGap, band = 0.15) {
+  const pb = boundsOfStrokes(prev);
+  const nb = boundsOfStrokes(next);
+  const y0 = Math.max(pb.minY, nb.minY);
+  const y1 = Math.min(pb.maxY, nb.maxY);
+  const bboxGap = nb.minX - pb.maxX;
+  if (y1 - y0 < band * 0.5) return targetGap - bboxGap;
+
+  let minGap = Infinity;
+  const steps = 32;
+  for (let i = 0; i <= steps; i++) {
+    const y = y0 + ((y1 - y0) * i) / steps;
+    const right = extremeXAtY(prev, y, "max", band);
+    const left = extremeXAtY(next, y, "min", band);
+    if (right == null || left == null) continue;
+    minGap = Math.min(minGap, left - right);
+  }
+  if (!isFinite(minGap)) minGap = bboxGap;
+  return targetGap - minGap;
+}
+
+function isPunctuation(token) {
+  const ch = token.ch || "";
+  return token.type === "char" && /[.,;:'"!?]/.test(ch);
+}
+
 export function layoutText(library, text, options) {
   const {
     xHeightMm = 3.2,
-    tracking = 0.18,
+    tracking = 0.14,
     lineHeight = 2.6,
     maxWidth = 170,
     seed = 1,
@@ -69,26 +128,34 @@ export function layoutText(library, text, options) {
   let y = marginTop + xHeightMm * 1.7;
   const allStrokes = [];
   const missing = new Set();
+  let prev = null;
+  const band = xHeightMm * 0.05;
+  const baseGap = xHeightMm * tracking;
 
-  const wrapIfNeeded = (width) => {
-    if (x > marginLeft && x + width > marginLeft + maxWidth) {
-      x = marginLeft;
-      y += xHeightMm * lineHeight;
-    }
+  const startLine = () => {
+    x = marginLeft;
+    prev = null;
   };
 
   for (const token of tokens) {
     if (token.type === "newline") {
-      x = marginLeft;
       y += xHeightMm * lineHeight;
+      startLine();
       continue;
     }
     if (token.type === "space") {
-      x += xHeightMm * 0.72;
-      if (x > marginLeft + maxWidth) {
-        x = marginLeft;
-        y += xHeightMm * lineHeight;
+      const space = xHeightMm * 0.55;
+      if (prev) {
+        const pb = boundsOfStrokes(prev);
+        x = pb.maxX + space;
+      } else {
+        x += space;
       }
+      if (x > marginLeft + maxWidth) {
+        y += xHeightMm * lineHeight;
+        startLine();
+      }
+      prev = null;
       continue;
     }
 
@@ -103,15 +170,37 @@ export function layoutText(library, text, options) {
 
     if (!glyph) {
       missing.add(token.ch || token.word);
-      x += xHeightMm * 0.9;
+      x += xHeightMm * 0.7;
+      prev = null;
       continue;
     }
 
     const scale = xHeightMm * (1 + (rand() - 0.5) * 2 * jitter.size);
-    const width = Math.max(glyph.width || 0.8, 0.35) * scale;
-    wrapIfNeeded(width);
-    for (const stroke of placeGlyphAt(glyph, x, y, scale, jitter, rand)) allStrokes.push(stroke);
-    x += width + xHeightMm * tracking;
+    let placed = placeGlyphAt(glyph, 0, y, scale, jitter, rand);
+    let b = boundsOfStrokes(placed);
+    const targetGap = baseGap * (isPunctuation(token) ? 0.45 : 1);
+
+    if (!prev) {
+      placed = translateStrokes(placed, x - b.minX);
+    } else {
+      placed = translateStrokes(placed, boundsOfStrokes(prev).maxX + targetGap - b.minX);
+      const shift = opticalKernShift(prev, placed, targetGap, band);
+      placed = translateStrokes(placed, shift);
+    }
+
+    b = boundsOfStrokes(placed);
+    if (prev && b.maxX > marginLeft + maxWidth) {
+      y += xHeightMm * lineHeight;
+      startLine();
+      placed = placeGlyphAt(glyph, 0, y, scale, jitter, rand);
+      b = boundsOfStrokes(placed);
+      placed = translateStrokes(placed, x - b.minX);
+      b = boundsOfStrokes(placed);
+    }
+
+    for (const stroke of placed) allStrokes.push(stroke);
+    prev = placed;
+    x = b.maxX;
   }
 
   return {
@@ -131,7 +220,7 @@ export function normalizeStrokes(strokes, guides) {
     y: (baseline - p.y) / unit,
   }));
   const b = boundsOfStrokes(norm);
-  const width = Math.max(b.maxX, 0.35);
+  const width = Math.max(b.maxX - Math.min(0, b.minX), b.width, 0.35);
   return { strokes: norm, width, bounds: b };
 }
 

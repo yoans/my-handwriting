@@ -20,7 +20,7 @@ export function emptyProject() {
       text: "",
       xHeight: 3.2,
       lineHeight: 2.6,
-      tracking: 0.18,
+      tracking: 0.14,
       seed: 7,
       jitter: 55,
       stampSize: 28,
@@ -242,4 +242,21 @@ export function projectToJson(project) {
 export function backupFilename(date = new Date()) {
   const day = date.toISOString().slice(0, 10);
   return `my-handwriting-backup-${day}.json`;
+}
+
+export async function wipeStoredProject() {
+  localStorage.removeItem(LS_PROJECT);
+  localStorage.removeItem(LS_LIBRARY);
+  localStorage.removeItem(LS_MACHINE);
+  localStorage.removeItem(LS_PLACEMENTS);
+  await new Promise((resolve) => {
+    if (!("indexedDB" in globalThis)) {
+      resolve();
+      return;
+    }
+    const req = indexedDB.deleteDatabase(IDB_NAME);
+    req.onsuccess = () => resolve();
+    req.onerror = () => resolve();
+    req.onblocked = () => resolve();
+  });
 }

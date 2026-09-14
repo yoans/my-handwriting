@@ -23,6 +23,7 @@
         <button class="btn" id="export-project">Download backup</button>
         <button class="btn secondary" id="import-project">Restore backup</button>
         <button class="btn ghost" id="merge-project">Merge backup</button>
+        <button class="btn danger" id="reset-all">Reset all</button>
         <input id="import-file" type="file" accept="application/json,.json" hidden />
         <p class="hint" id="save-status">Saving in this browser…</p>
         <p class="hint">Auto-saves letters, stamps, the note, stamps on the page, and printer settings. Download a backup before clearing Safari data or switching devices.</p>
@@ -170,8 +171,8 @@
             <input id="line-height" type="number" step="0.1" value="2.6" />
           </div>
           <div class="stack">
-            <label for="tracking">Tracking</label>
-            <input id="tracking" type="number" step="0.02" value="0.18" />
+            <label for="tracking">Letter gap</label>
+            <input id="tracking" type="number" step="0.02" value="0.14" />
           </div>
           <div class="stack">
             <label for="seed">Variation seed</label>
@@ -182,6 +183,7 @@
             <input id="jitter" type="range" min="0" max="100" value="55" />
           </div>
         </div>
+        <p class="hint" style="margin:8px 0 0;">Letter gap is the target space between ink. Pairs like AV, To, and WA slide together automatically from the stroke outlines.</p>
         <div class="toolbar" style="margin-top:14px;">
           <button class="btn" id="export-gcode">Download G-code</button>
           <button class="btn secondary" id="export-dry">Dry-run G-code (pen up)</button>
