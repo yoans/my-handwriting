@@ -338,11 +338,66 @@ function flushPath(strokes, path) {
   return [];
 }
 
-function shadeTone(dark, minDark, shades) {
-  let t = (Number(dark) - minDark) / Math.max(1 - minDark, 0.08);
-  t = Math.max(0, Math.min(1, t));
+function stretchGray(gray) {
+  const hist = new Uint32Array(256);
+  for (let i = 0; i < gray.length; i++) {
+    hist[Math.max(0, Math.min(255, (gray[i] * 255) | 0))] += 1;
+  }
+  const total = gray.length;
+  let acc = 0;
+  let lo = 0;
+  let hi = 255;
+  const loCut = total * 0.02;
+  const hiCut = total * 0.98;
+  let loSet = false;
+  for (let i = 0; i < 256; i++) {
+    acc += hist[i];
+    if (!loSet && acc >= loCut) {
+      lo = i;
+      loSet = true;
+    }
+    if (acc >= hiCut) {
+      hi = i;
+      break;
+    }
+  }
+  if (hi <= lo) return gray;
+  const out = new Float32Array(gray.length);
+  const scale = 255 / (hi - lo);
+  for (let i = 0; i < gray.length; i++) {
+    out[i] = Math.max(0, Math.min(1, (gray[i] * 255 - lo) * scale / 255));
+  }
+  return out;
+}
+
+function applyGamma(gray, gamma) {
+  const g = Math.max(0.35, Math.min(2.4, Number(gamma) || 1));
+  if (Math.abs(g - 1) < 0.02) return gray;
+  const out = new Float32Array(gray.length);
+  for (let i = 0; i < gray.length; i++) out[i] = Math.pow(gray[i], g);
+  return out;
+}
+
+function quantizeGray(gray, shades) {
   const n = Math.max(2, Math.min(100, Math.round(Number(shades) || 32)));
-  if (n < 100) t = Math.round(t * (n - 1)) / (n - 1);
+  const steps = n - 1;
+  const out = new Float32Array(gray.length);
+  for (let i = 0; i < gray.length; i++) {
+    out[i] = Math.round(Math.max(0, Math.min(1, gray[i])) * steps) / steps;
+  }
+  return out;
+}
+
+function contrastGamma(threshold) {
+  const t = (Number(threshold || 145) - 40) / 180;
+  return 1.7 - Math.max(0, Math.min(1, t)) * 1.15;
+}
+
+function shadeTone(dark, minDark, shades) {
+  let t = Math.max(0, Math.min(1, Number(dark)));
+  if (minDark > 0.001) t = Math.max(0, (t - minDark) / Math.max(1 - minDark, 0.08));
+  const n = Math.max(2, Math.min(100, Math.round(Number(shades) || 32)));
+  t = Math.round(t * (n - 1)) / (n - 1);
   return t;
 }
 
@@ -370,7 +425,7 @@ function spiralShade(gray, w, h, { pitch, minDark, shades }) {
     const x = cx + r * Math.cos(theta);
     const y = cy + r * Math.sin(theta);
     if (x >= 0 && y >= 0 && x < w && y < h) {
-      const t = shadeTone(sampleGray(gray, w, h, x, y), minDark, shades);
+      const t = sampleGray(gray, w, h, x, y);
       const localPitch = pitchFromTone(t, minPitch, maxPitch);
       path.push({ x, y });
       theta += dTheta;
@@ -519,8 +574,9 @@ export function imageDataToStamp(imageData, options = {}) {
   if (isShadeMode(mode)) {
     let gray = imageToGray(imageData.data, w, h, options.invert);
     gray = blurGray(gray, w, h);
-    gray = blurGray(gray, w, h);
-    if (mode === "spiral") gray = blurGray(gray, w, h);
+    gray = stretchGray(gray);
+    gray = applyGamma(gray, contrastGamma(options.threshold));
+    gray = quantizeGray(gray, options.shades ?? 32);
     const raw = shadeImage(gray, w, h, mode, options);
     const simplify = mode === "spiral" ? 0.32 : (options.simplify ?? 0.7);
     const strokes = raw

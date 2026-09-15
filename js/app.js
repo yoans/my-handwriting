@@ -674,7 +674,7 @@ function retraceStamp() {
   if (!doodleMode()) {
     drawStampPreview();
     $("stamp-status").textContent = lastTrace.count
-      ? `${lastTrace.count} paths ready. Save, then stamp them onto Compose.`
+      ? `${lastTrace.count} paths ready${shade ? ` · ${Number($("trace-shades").value) || 32} shades` : ""}. Save, then stamp them onto Compose.`
       : shade
         ? "No shade paths — lower Skip highlights, raise density, or invert."
         : "No ink found — try a lower threshold, invert, or a higher-contrast photo.";
@@ -1204,13 +1204,17 @@ function init() {
     loadStampFile(e.dataTransfer.files?.[0]);
   });
   ["trace-mode", "trace-threshold", "trace-join", "trace-density", "trace-shades", "trace-invert"].forEach((id) => {
-    const run = () => {
+    const run = (immediate) => {
       syncTraceControls();
-      retraceStamp();
+      if (immediate || id === "trace-mode" || id === "trace-invert") retraceStamp();
+      else {
+        clearTimeout(run._t);
+        run._t = setTimeout(retraceStamp, 60);
+      }
       autosave();
     };
-    $(id).addEventListener("input", run);
-    $(id).addEventListener("change", run);
+    $(id).addEventListener("input", () => run(false));
+    $(id).addEventListener("change", () => run(true));
   });
   $("save-stamp").addEventListener("click", saveStamp);
   $("stamp-source").addEventListener("change", () => { syncStampSource(); autosave(); });
