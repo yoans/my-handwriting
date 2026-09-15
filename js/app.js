@@ -49,6 +49,15 @@ let saveTimer = 0;
 
 const $ = (id) => document.getElementById(id);
 
+function migrateShadeDensity(ui = {}) {
+  const d = Number(ui.density);
+  if (!Number.isFinite(d)) return 12;
+  if (ui.thicken == null && ui.smooth == null && d >= 1 && d <= 8) {
+    return Math.max(1, Math.min(24, Math.round(4 + (d - 1) * (20 / 7))));
+  }
+  return Math.max(1, Math.min(24, d));
+}
+
 function collectProject() {
   return {
     library,
@@ -78,7 +87,11 @@ function collectProject() {
       mode: $("trace-mode").value,
       threshold: Number($("trace-threshold").value),
       join: Number($("trace-join").value),
-      density: Number($("trace-density").value) || 4,
+      thicken: Number($("trace-thicken").value) || 0,
+      specks: Number($("trace-specks").value) || 18,
+      smooth: Number($("trace-smooth").value) || 8,
+      scribble: Number($("trace-scribble").value) || 5,
+      density: Number($("trace-density").value) || 12,
       shades: Number($("trace-shades").value) || 32,
       invert: $("trace-invert").checked,
       doodle: doodleStrokes,
@@ -115,7 +128,11 @@ function applyProject(project) {
   $("trace-mode").value = project.stampsUi?.mode || "outline";
   $("trace-threshold").value = project.stampsUi?.threshold ?? 145;
   $("trace-join").value = project.stampsUi?.join ?? 1;
-  $("trace-density").value = project.stampsUi?.density ?? 4;
+  $("trace-thicken").value = project.stampsUi?.thicken ?? 0;
+  $("trace-specks").value = project.stampsUi?.specks ?? 18;
+  $("trace-smooth").value = project.stampsUi?.smooth ?? 8;
+  $("trace-scribble").value = project.stampsUi?.scribble ?? 5;
+  $("trace-density").value = migrateShadeDensity(project.stampsUi);
   $("trace-shades").value = project.stampsUi?.shades ?? 32;
   $("trace-invert").checked = Boolean(project.stampsUi?.invert);
   doodleStrokes = Array.isArray(project.stampsUi?.doodle) ? project.stampsUi.doodle : [];
@@ -620,13 +637,29 @@ function doodleMode() {
 
 function syncTraceControls() {
   const doodle = doodleMode();
-  const shade = !doodle && isShadeMode($("trace-mode").value);
+  const mode = $("trace-mode").value;
+  const shade = !doodle && isShadeMode(mode);
+  const scribble = !doodle && !shade && mode === "scribble";
   document.querySelectorAll(".stamp-binary-only").forEach((el) => { el.hidden = doodle || shade; });
   document.querySelectorAll(".stamp-shade-only").forEach((el) => { el.hidden = doodle || !shade; });
-  const label = $("trace-threshold-label");
-  if (label) label.textContent = shade ? "Contrast" : "Ink threshold";
-  const shadesVal = $("trace-shades-val");
-  if (shadesVal && $("trace-shades")) shadesVal.textContent = String($("trace-shades").value);
+  document.querySelectorAll(".stamp-scribble-only").forEach((el) => { el.hidden = !scribble; });
+  const name = $("trace-threshold-name");
+  if (name) name.textContent = shade ? "Contrast" : "Ink threshold";
+  const vals = [
+    ["trace-threshold-val", "trace-threshold"],
+    ["trace-join-val", "trace-join"],
+    ["trace-thicken-val", "trace-thicken"],
+    ["trace-specks-val", "trace-specks"],
+    ["trace-smooth-val", "trace-smooth"],
+    ["trace-scribble-val", "trace-scribble"],
+    ["trace-density-val", "trace-density"],
+    ["trace-shades-val", "trace-shades"],
+  ];
+  for (const [labelId, inputId] of vals) {
+    const label = $(labelId);
+    const input = $(inputId);
+    if (label && input) label.textContent = String(input.value);
+  }
 }
 
 function syncStampSource() {
@@ -642,7 +675,7 @@ function syncStampSource() {
     $("stamp-status").textContent = `${lastTrace.count} paths ready. Save, then stamp them onto Compose.`;
   } else {
     $("stamp-status").textContent = isShadeMode($("trace-mode").value)
-      ? "Load a photo. Spiral / hatch / squiggle / rings turn gray values into pen shading."
+      ? "Load a photo. Wander / hatch / squiggle / rings turn gray values into pen shading."
       : "Load a photo of a drawing on plain paper. Darker marks become paths.";
   }
   drawStampPreview();
@@ -663,10 +696,12 @@ function retraceStamp() {
     invert: $("trace-invert").checked,
     mode,
     joinGaps: Number($("trace-join").value),
-    density: Number($("trace-density").value) || 4,
+    thicken: Number($("trace-thicken").value) || 0,
+    minBlob: Number($("trace-specks").value) || 18,
+    simplify: shade ? 0.7 : (0.25 + (Math.max(1, Number($("trace-smooth").value) || 8) - 1) * 0.22),
+    scribbleStep: Number($("trace-scribble").value) || 5,
+    density: Number($("trace-density").value) || 12,
     shades: Number($("trace-shades").value) || 32,
-    minBlob: 18,
-    simplify: shade ? 0.7 : 1.5,
   });
   if (!doodleMode()) {
     drawStampPreview();
@@ -1200,7 +1235,7 @@ function init() {
     e.preventDefault();
     loadStampFile(e.dataTransfer.files?.[0]);
   });
-  ["trace-mode", "trace-threshold", "trace-join", "trace-density", "trace-shades", "trace-invert"].forEach((id) => {
+  ["trace-mode", "trace-threshold", "trace-join", "trace-thicken", "trace-specks", "trace-smooth", "trace-scribble", "trace-density", "trace-shades", "trace-invert"].forEach((id) => {
     const run = (immediate) => {
       syncTraceControls();
       if (immediate || id === "trace-mode" || id === "trace-invert") retraceStamp();

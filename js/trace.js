@@ -245,9 +245,11 @@ function walkSkeleton(bin, w, h) {
   return strokes;
 }
 
-function scribbleFill(bin, w, h) {
+function scribbleFill(bin, w, h, spacing = 5) {
   const strokes = [];
-  const step = 5;
+  const step = Math.max(2, Number(spacing) || 5);
+  const amp = Math.max(0.7, step * 0.34);
+  const ds = Math.max(1, step * 0.4);
   for (let y = 0; y < h; y += step) {
     let run = null;
     for (let x = 0; x <= w; x++) {
@@ -256,8 +258,8 @@ function scribbleFill(bin, w, h) {
       if (!on && run != null) {
         if (x - run >= 4) {
           const line = [];
-          for (let t = run; t < x; t += 2) {
-            const wobble = Math.sin(t * 0.35 + y * 0.2) * 1.6;
+          for (let t = run; t < x; t += ds) {
+            const wobble = Math.sin(t * 0.35 + y * 0.2) * amp;
             line.push({ x: t, y: y + wobble });
           }
           if (line.length >= 2) strokes.push(line);
@@ -332,7 +334,9 @@ function sampleNearest(gray, w, h, x, y) {
 }
 
 function shadePitch(density) {
-  return Math.max(2.4, 8.4 - Number(density || 4) * 0.72);
+  const d = Math.max(1, Math.min(24, Number(density) || 12));
+  const t = (d - 1) / 23;
+  return 14 * Math.pow(0.72 / 14, t);
 }
 
 function flushPath(strokes, path) {
@@ -391,13 +395,13 @@ function quantizeGray(gray, shades) {
 }
 
 function contrastGamma(threshold) {
-  const t = (Number(threshold || 145) - 40) / 180;
+  const t = (Number(threshold || 145) - 20) / 230;
   return 1.7 - Math.max(0, Math.min(1, t)) * 1.15;
 }
 
 function shadePitches(pitch) {
-  const minPitch = Math.max(0.48, pitch * 0.14);
-  const maxPitch = Math.max(minPitch + 1.35, pitch * 3.15);
+  const minPitch = Math.max(0.22, pitch * 0.1);
+  const maxPitch = Math.max(minPitch + 2.4, pitch * 4.8);
   return { minPitch, maxPitch };
 }
 
@@ -428,33 +432,72 @@ function shadeCenter(gray, w, h) {
   return { cx: sx / mass, cy: sy / mass };
 }
 
-function spiralShade(gray, w, h, { pitch }) {
-  const { cx, cy } = shadeCenter(gray, w, h);
-  const maxR = Math.hypot(Math.max(cx, w - 1 - cx), Math.max(cy, h - 1 - cy)) + 2;
+function cellTone(gray, w, h, cx, cy, span) {
+  const s = Math.max(1, span * 0.28);
+  let m = 0;
+  const spots = [[0, 0], [-s, -s], [s, -s], [-s, s], [s, s], [0, -s], [0, s], [-s, 0], [s, 0]];
+  for (const [dx, dy] of spots) {
+    const x = cx + dx;
+    const y = cy + dy;
+    if (x >= 0 && y >= 0 && x < w && y < h) m = Math.max(m, sampleNearest(gray, w, h, x, y));
+  }
+  return m;
+}
+
+function hilbertAdapt(x0, y0, xi, xj, yi, yj, gray, w, h, minPitch, maxPitch, out, budget) {
+  if (out.length >= budget) return;
+  const span = Math.max(Math.hypot(xi, xj), Math.hypot(yi, yj));
+  const cx = x0 + (xi + yi) * 0.5;
+  const cy = y0 + (xj + yj) * 0.5;
+  if (cx < -span || cy < -span || cx > w + span || cy > h + span) return;
+  const t = cellTone(gray, w, h, cx, cy, span);
+  if (t < 0.035) {
+    if (span > Math.max(4, maxPitch) && span > minPitch * 2) {
+      const xi2 = xi * 0.5;
+      const xj2 = xj * 0.5;
+      const yi2 = yi * 0.5;
+      const yj2 = yj * 0.5;
+      hilbertAdapt(x0, y0, yi2, yj2, xi2, xj2, gray, w, h, minPitch, maxPitch, out, budget);
+      hilbertAdapt(x0 + xi2, y0 + xj2, xi2, xj2, yi2, yj2, gray, w, h, minPitch, maxPitch, out, budget);
+      hilbertAdapt(x0 + xi2 + yi2, y0 + xj2 + yj2, xi2, xj2, yi2, yj2, gray, w, h, minPitch, maxPitch, out, budget);
+      hilbertAdapt(x0 + xi2 + yi, y0 + xj2 + yj, -yi2, -yj2, -xi2, -xj2, gray, w, h, minPitch, maxPitch, out, budget);
+    }
+    return;
+  }
+  const want = pitchFromTone(t, minPitch, maxPitch);
+  if (span <= want || span <= minPitch) {
+    if (cx >= 0 && cy >= 0 && cx < w && cy < h) out.push({ x: cx, y: cy });
+    return;
+  }
+  const xi2 = xi * 0.5;
+  const xj2 = xj * 0.5;
+  const yi2 = yi * 0.5;
+  const yj2 = yj * 0.5;
+  hilbertAdapt(x0, y0, yi2, yj2, xi2, xj2, gray, w, h, minPitch, maxPitch, out, budget);
+  hilbertAdapt(x0 + xi2, y0 + xj2, xi2, xj2, yi2, yj2, gray, w, h, minPitch, maxPitch, out, budget);
+  hilbertAdapt(x0 + xi2 + yi2, y0 + xj2 + yj2, xi2, xj2, yi2, yj2, gray, w, h, minPitch, maxPitch, out, budget);
+  hilbertAdapt(x0 + xi2 + yi, y0 + xj2 + yj, -yi2, -yj2, -xi2, -xj2, gray, w, h, minPitch, maxPitch, out, budget);
+}
+
+function wanderShade(gray, w, h, { pitch }) {
   const { minPitch, maxPitch } = shadePitches(pitch);
-  const ds = 0.72;
+  const size = 2 ** Math.ceil(Math.log2(Math.max(w, h, 8)));
+  const pts = [];
+  hilbertAdapt(0, 0, size, 0, 0, size, gray, w, h, minPitch, maxPitch, pts, 90000);
   const strokes = [];
   let path = [];
-  let r = Math.max(0.8, minPitch * 0.35);
-  let theta = 0;
-  let smoothT = 0.5;
-  let guard = 0;
-  const maxPts = 220000;
-  while (r < maxR && guard++ < maxPts) {
-    const dTheta = ds / Math.max(r, 1);
-    const x = cx + r * Math.cos(theta);
-    const y = cy + r * Math.sin(theta);
-    if (x >= 0 && y >= 0 && x < w && y < h) {
-      const t = sampleGray(gray, w, h, x, y);
-      smoothT += (t - smoothT) * 0.1;
-      path.push({ x, y });
-      theta += dTheta;
-      r += (pitchFromTone(smoothT, minPitch, maxPitch) / (Math.PI * 2)) * dTheta;
-    } else {
+  const maxJump = Math.max(w, h) * 0.16;
+  for (const p of pts) {
+    if (!path.length) {
+      path.push(p);
+      continue;
+    }
+    const prev = path[path.length - 1];
+    if (Math.hypot(p.x - prev.x, p.y - prev.y) > maxJump) {
       if (path.length >= 2) strokes.push(path);
-      path = [];
-      theta += dTheta;
-      r += (maxPitch / (Math.PI * 2)) * dTheta;
+      path = [p];
+    } else {
+      path.push(p);
     }
   }
   if (path.length >= 2) strokes.push(path);
@@ -552,13 +595,20 @@ function shadeImage(gray, w, h, mode, options) {
   if (mode === "hatch") return hatchShade(gray, w, h, opts);
   if (mode === "squiggle") return squiggleShade(gray, w, h, opts);
   if (mode === "rings") return ringsShade(gray, w, h, opts);
-  return spiralShade(gray, w, h, opts);
+  return wanderShade(gray, w, h, opts);
 }
 
-export function binaryToStrokes(bin, w, h, { mode = "outline", simplify = 1.4 } = {}) {
+function thickenInk(bin, w, h, times) {
+  let cur = bin;
+  const n = Math.max(0, Math.round(Number(times) || 0));
+  for (let i = 0; i < n; i++) cur = dilate(cur, w, h);
+  return cur;
+}
+
+export function binaryToStrokes(bin, w, h, { mode = "outline", simplify = 1.4, scribbleStep = 5 } = {}) {
   let raw = [];
   if (mode === "centerline") raw = walkSkeleton(zhangSuen(bin, w, h), w, h);
-  else if (mode === "scribble") raw = [...findContours(bin, w, h), ...scribbleFill(bin, w, h)];
+  else if (mode === "scribble") raw = [...findContours(bin, w, h), ...scribbleFill(bin, w, h, scribbleStep)];
   else raw = findContours(bin, w, h);
   return raw
     .map((stroke) => simplifyStroke(stroke, simplify))
@@ -591,7 +641,9 @@ export function imageDataToStamp(imageData, options = {}) {
     gray = applyGamma(gray, contrastGamma(options.threshold));
     gray = quantizeGray(gray, options.shades ?? 32);
     const raw = shadeImage(gray, w, h, mode, options);
-    const simplify = mode === "spiral" ? 0.32 : mode === "squiggle" ? 0.18 : 0.48;
+    const simplify = mode === "spiral"
+      ? Math.max(0.2, shadePitch(options.density) * 0.16)
+      : mode === "squiggle" ? 0.18 : 0.48;
     const strokes = raw
       .map((stroke) => simplifyStroke(stroke, simplify))
       .filter((stroke) => stroke.length >= 2);
@@ -605,7 +657,8 @@ export function imageDataToStamp(imageData, options = {}) {
 
   let bin = imageDataToBinary(imageData.data, w, h, options);
   bin = closeGaps(bin, w, h, options.joinGaps || 0);
-  bin = despeckle(bin, w, h, options.minBlob || 18);
+  bin = thickenInk(bin, w, h, options.thicken || 0);
+  bin = despeckle(bin, w, h, options.minBlob ?? 18);
   const strokes = binaryToStrokes(bin, w, h, options);
   if (!strokes.length) return { strokes: [], width: 1, height: 1, count: 0, preview: bin, previewKind: "bin", w, h };
   return { ...normalizeStamp(strokes), count: strokes.length, preview: bin, previewKind: "bin", w, h };

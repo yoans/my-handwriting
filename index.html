@@ -106,7 +106,7 @@
         <h2>Stamps</h2>
         <p class="lede">
           Draw a doodle, trace a scan, or turn a photo into shaded pen work.
-          Shade modes keep an even line weight: darker gray steps pack the traces closer together.
+          Shade modes keep an even line weight. Wander is one continuous line that packs tighter in the darks; rings / hatch / squiggle are families of traces.
         </p>
         <div class="row">
           <div class="stack">
@@ -138,23 +138,39 @@
               <option value="outline">Outline (crayon / marker)</option>
               <option value="centerline">Centerline (thin pen)</option>
               <option value="scribble">Outline + scribble fill</option>
-              <option value="spiral">Spiral shade (spacing)</option>
+              <option value="spiral">Wander shade (one line)</option>
               <option value="hatch">Hatch shade (spacing)</option>
               <option value="squiggle">Squiggle shade (spacing)</option>
               <option value="rings">Ring shade (spacing)</option>
             </select>
           </div>
           <div class="stack stamp-photo-only">
-            <label for="trace-threshold" id="trace-threshold-label">Ink threshold</label>
-            <input id="trace-threshold" type="range" min="40" max="220" value="145" />
+            <label for="trace-threshold" id="trace-threshold-label"><span id="trace-threshold-name">Ink threshold</span> (<span id="trace-threshold-val">145</span>)</label>
+            <input id="trace-threshold" type="range" min="20" max="250" value="145" />
           </div>
           <div class="stack stamp-photo-only stamp-binary-only">
-            <label for="trace-join">Join gaps</label>
-            <input id="trace-join" type="range" min="0" max="3" value="1" />
+            <label for="trace-join">Join gaps (<span id="trace-join-val">1</span>)</label>
+            <input id="trace-join" type="range" min="0" max="8" value="1" />
+          </div>
+          <div class="stack stamp-photo-only stamp-binary-only">
+            <label for="trace-thicken">Thicken marks (<span id="trace-thicken-val">0</span>)</label>
+            <input id="trace-thicken" type="range" min="0" max="5" value="0" />
+          </div>
+          <div class="stack stamp-photo-only stamp-binary-only">
+            <label for="trace-specks">Drop specks (<span id="trace-specks-val">18</span>)</label>
+            <input id="trace-specks" type="range" min="1" max="120" value="18" />
+          </div>
+          <div class="stack stamp-photo-only stamp-binary-only">
+            <label for="trace-smooth">Smooth paths (<span id="trace-smooth-val">8</span>)</label>
+            <input id="trace-smooth" type="range" min="1" max="20" value="8" />
+          </div>
+          <div class="stack stamp-photo-only stamp-scribble-only" hidden>
+            <label for="trace-scribble">Scribble spacing (<span id="trace-scribble-val">5</span>)</label>
+            <input id="trace-scribble" type="range" min="2" max="20" value="5" />
           </div>
           <div class="stack stamp-photo-only stamp-shade-only" hidden>
-            <label for="trace-density">Shade density</label>
-            <input id="trace-density" type="range" min="1" max="8" value="4" />
+            <label for="trace-density">Shade density (<span id="trace-density-val">12</span>)</label>
+            <input id="trace-density" type="range" min="1" max="24" value="12" />
           </div>
           <div class="stack stamp-photo-only stamp-shade-only" hidden>
             <label for="trace-shades">Shades (<span id="trace-shades-val">32</span>)</label>
