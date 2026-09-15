@@ -128,6 +128,8 @@ nav {
   gap: 6px;
 }
 
+[hidden] { display: none !important; }
+
 label, .label {
   font-size: 0.82rem;
   letter-spacing: 0.04em;
@@ -206,7 +208,8 @@ textarea {
 }
 
 #capture-canvas,
-#compose-canvas {
+#compose-canvas,
+#stamp-canvas {
   display: block;
   width: 100%;
   height: auto;

@@ -103,13 +103,20 @@
       </section>
 
       <section class="panel" id="panel-stamps">
-        <h2>Scan a drawing</h2>
+        <h2>Stamps</h2>
         <p class="lede">
-          Photo a kid drawing, doodle, or sticker. We turn the dark ink into pen paths you can stamp onto the note —
+          Draw a doodle here, or photo a kid drawing / sticker. Those pen paths stamp onto the note —
           one copy, or a whole wiggly parade.
         </p>
         <div class="row">
           <div class="stack">
+            <label for="stamp-source">Make from</label>
+            <select id="stamp-source">
+              <option value="photo">Photo / scan</option>
+              <option value="doodle">Doodle (draw here)</option>
+            </select>
+          </div>
+          <div class="stack stamp-photo-only">
             <label>Photo</label>
             <div class="toolbar">
               <button class="btn" id="load-stamp-image">Load scan / photo</button>
@@ -118,7 +125,14 @@
               <input id="stamp-camera-file" type="file" accept="image/*" capture="environment" hidden />
             </div>
           </div>
-          <div class="stack">
+          <div class="stack" id="stamp-doodle-tools" hidden>
+            <label>&nbsp;</label>
+            <div class="toolbar">
+              <button class="btn ghost" id="undo-doodle">Undo stroke</button>
+              <button class="btn ghost" id="clear-doodle">Clear</button>
+            </div>
+          </div>
+          <div class="stack stamp-photo-only">
             <label for="trace-mode">Trace</label>
             <select id="trace-mode">
               <option value="outline">Outline (crayon / marker)</option>
@@ -126,17 +140,17 @@
               <option value="scribble">Outline + scribble fill</option>
             </select>
           </div>
-          <div class="stack">
+          <div class="stack stamp-photo-only">
             <label for="trace-threshold">Ink threshold</label>
             <input id="trace-threshold" type="range" min="40" max="220" value="145" />
           </div>
-          <div class="stack">
+          <div class="stack stamp-photo-only">
             <label for="trace-join">Join gaps</label>
             <input id="trace-join" type="range" min="0" max="3" value="1" />
           </div>
         </div>
         <div class="row" style="margin-top:10px;">
-          <label class="hint"><input type="checkbox" id="trace-invert" /> Invert (white ink on dark paper)</label>
+          <label class="hint stamp-photo-only"><input type="checkbox" id="trace-invert" /> Invert (white ink on dark paper)</label>
           <div class="stack">
             <label for="stamp-name">Stamp name</label>
             <input id="stamp-name" type="text" value="doodle" />
@@ -171,8 +185,12 @@
             <input id="line-height" type="number" step="0.1" value="2.6" />
           </div>
           <div class="stack">
-            <label for="tracking">Letter gap</label>
+            <label for="tracking">Letter gap (× x-height)</label>
             <input id="tracking" type="number" step="0.02" value="0.14" />
+          </div>
+          <div class="stack">
+            <label for="word-space">Word gap (× x-height)</label>
+            <input id="word-space" type="number" step="0.02" value="0.42" />
           </div>
           <div class="stack">
             <label for="seed">Variation seed</label>
@@ -183,7 +201,7 @@
             <input id="jitter" type="range" min="0" max="100" value="55" />
           </div>
         </div>
-        <p class="hint" style="margin:8px 0 0;">Letter gap is the target space between ink. Pairs like AV, To, and WA slide together automatically from the stroke outlines.</p>
+        <p class="hint" style="margin:8px 0 0;">Letter gap is the ink-to-ink space inside a word. Word gap is extra space on a space character, <em>on top of</em> letter gap, so spreading letters does not swallow the spaces. Pairs like AV, To, and WA still slide together from the stroke outlines.</p>
         <div class="toolbar" style="margin-top:14px;">
           <button class="btn" id="export-gcode">Download G-code</button>
           <button class="btn secondary" id="export-dry">Dry-run G-code (pen up)</button>
@@ -280,6 +298,7 @@
             </div>
           </div>
           <div class="toolbar" style="margin-top:16px;">
+            <label class="hint"><input type="checkbox" id="mirror-x" /> Mirror X (A1 on: page top at the back reads left-to-right)</label>
             <label class="hint"><input type="checkbox" id="home-xy" /> Home X/Y at start (off for A1 — start G-code homes itself)</label>
             <button class="btn secondary" id="save-machine">Save machine</button>
             <button class="btn" id="cal-square">Download 20 mm calibration square</button>
@@ -292,10 +311,10 @@
             <li>Print an <strong>A1</strong> pen holder — not a P1/X1 mount. Start with <a href="https://makerworld.com/en/models/429109-pen-holder-a1-a1-mini-plotter" target="_blank" rel="noopener">Pen Holder A1 / A1 Mini</a> or the simpler <a href="https://makerworld.com/en/models/1362648-easy-penholder-a1-a1-mini" target="_blank" rel="noopener">Easy penholder</a>. The modular <a href="https://makerworld.com/en/models/2029113-modular-system-for-a1-p1-x1-series" target="_blank" rel="noopener">UMTS by Falu</a> also lists an A1 profile.</li>
             <li>Unload filament. Leave AMS Lite disconnected for this job. Mount the holder per its page, then clamp a fineliner. The nib sits <em>below</em> the nozzle — that gap is <strong>pen Z offset</strong>.</li>
             <li>Tape paper to a <strong>smooth / cool plate</strong> (textured PEI is lumpy). Put the top of the page toward the <strong>back</strong> of the printer. Keep ~25 mm clear of every bed edge. The start G-code homes the <em>nozzle</em> at <code>X128 Y2</code> so the pen can hang off the rear — do not tape paper into that back strip.</li>
-            <li>Leave pen Z offset at <strong>20 mm</strong> for the first runs (too high is safe; too low crushes the plate). Z down = 0 after that offset is zeroed.</li>
+            <li>Leave pen Z offset at <strong>20 mm</strong> for the first runs (too high is safe; too low scrapes the plate on the way in). A 2 mm click-count is almost always too small — if the Sharpie cannot clear the rear edge after Z home, the offset is too low, not Z up. Z down = 0 after that offset is zeroed.</li>
             <li>Export a <strong>dry-run</strong> first (pen stays up). Copy the <code>.gcode</code> to the <strong>root</strong> of the A1 MicroSD card. The card is <em>not</em> hot-swappable: on the screen, eject it before pulling it. Wiki: <a href="https://wiki.bambulab.com/en/a1/manual/how-to-print-from-sd-card" target="_blank" rel="noopener">print from SD card</a>.</li>
             <li>Print Files → your file. Turn <strong>off</strong> bed leveling, flow/nozzle calibration, AMS, and spaghetti detection if the start dialog offers them. Stay next to the machine for Z home. If the pen hits the bed before the nozzle does, abort immediately and increase the offset — or make sure Y2 actually clears the pen off the plate.</li>
-            <li>When the dry-run path looks right, run the 20 mm square. Lower pen Z offset a millimeter at a time until the square is a clean line, then write a short word.</li>
+            <li>When the dry-run path looks right, run the 20 mm square. Lower pen Z offset a millimeter at a time until the square is a clean line, then write a short word. <strong>Mirror X</strong> is on for the A1 so the page reads left-to-right when you pick it up with the top at the back. Uncheck it if letters are still backwards.</li>
           </ol>
           <p class="hint">A1 volume is 256×256×256 mm. This sequence is the A1-Mini plotter start G-code with X/Y limits changed for the full A1 (center X128, present at Y254). Watch the first home. Do not home Z from the stock print profile with a pen mounted.</p>
         </article>

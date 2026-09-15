@@ -135,6 +135,7 @@ export const PRESETS = {
     homeXY: false,
     yDownIsNegative: false,
     penZOffset: 20,
+    xMirror: true,
   },
   bambu: { label: "Bambu P1/X1", bedX: 256, bedY: 256, originX: 18, originY: 230, paperWidth: 180, paperHeight: 200, zUp: 5, zDown: 0, travelFeed: 9000, writeFeed: 1200, flavor: "bambu", homeXY: false, yDownIsNegative: true },
   klipper: { label: "Klipper", bedX: 220, bedY: 220, originX: 15, originY: 200, paperWidth: 180, paperHeight: 250, zUp: 5, zDown: 0.4, travelFeed: 6000, writeFeed: 1400, flavor: "klipper", homeXY: true, yDownIsNegative: true },

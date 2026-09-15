@@ -29,7 +29,7 @@ The A1 is the machine this project is tuned for. Bed is **256 × 256 × 256 mm**
 
 1. Home **X only**, lift, move to **X128 Y2** (bed at the back so the pen can hang off the rear edge).
 2. Home **Z on the nozzle**.
-3. Raise by **pen Z offset** (start at 20 mm, then lower) and `G92 Z0` so Z0 is pen-on-paper.
+3. Park high above the bed (so the pen clears the plate on the first move in), then `G92` so Z0 is pen-on-paper. **Pen Z offset** starts at **20 mm** (too high is safe). A 2 mm jog count is almost always too low if the nib still hits the rear edge.
 
 **Holder (print one of these, A1 profile only):**
 
@@ -42,7 +42,7 @@ The A1 is the machine this project is tuned for. Bed is **256 × 256 × 256 mm**
 1. Unload filament. Do not use AMS Lite for plot jobs.
 2. Mount the holder and a fineliner.
 3. Tape paper to a **smooth / cool plate**, top of the page toward the **back** of the printer. Leave the rear ~25 mm of the bed empty for nozzle homing.
-4. In the studio, Printer tab → **Bambu Lab A1**. Export a **dry-run** first.
+4. In the studio, Printer tab → **Bambu Lab A1**. **Mirror X** stays on so the page reads correctly when the top is at the back of the bed. Export a **dry-run** first.
 5. Copy the `.gcode` to the **root** of the MicroSD card. The A1 card is not hot-swappable — [eject it from the screen](https://wiki.bambulab.com/en/a1/manual/how-to-print-from-sd-card) before pulling it.
 6. Print Files → the file. Turn **off** bed leveling, flow/nozzle calibration, AMS, and spaghetti detection if those toggles appear.
 7. Stay next to it for Z home. If the pen touches first, abort and increase pen Z offset.

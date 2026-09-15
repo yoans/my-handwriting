@@ -98,6 +98,7 @@ export function layoutText(library, text, options) {
   const {
     xHeightMm = 3.2,
     tracking = 0.14,
+    wordSpace = 0.42,
     lineHeight = 2.6,
     maxWidth = 170,
     seed = 1,
@@ -144,7 +145,9 @@ export function layoutText(library, text, options) {
       continue;
     }
     if (token.type === "space") {
-      const space = xHeightMm * 0.55;
+      // Word gap sits on top of letter gap so opening out letters cannot
+      // collapse "the   cat" into "the cat".
+      const space = baseGap + xHeightMm * Math.max(wordSpace, 0);
       if (prev) {
         const pb = boundsOfStrokes(prev);
         x = pb.maxX + space;

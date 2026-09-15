@@ -21,6 +21,7 @@ export function emptyProject() {
       xHeight: 3.2,
       lineHeight: 2.6,
       tracking: 0.14,
+      wordSpace: 0.42,
       seed: 7,
       jitter: 55,
       stampSize: 28,
@@ -34,10 +35,12 @@ export function emptyProject() {
     },
     stampsUi: {
       name: "doodle",
+      source: "photo",
       mode: "outline",
       threshold: 145,
       join: 1,
       invert: false,
+      doodle: [],
     },
     selectedStampId: null,
   };
@@ -79,7 +82,11 @@ export function normalizeProject(raw) {
       ...(raw.capture || {}),
       strokes: Array.isArray(raw.capture?.strokes) ? raw.capture.strokes : [],
     },
-    stampsUi: { ...base.stampsUi, ...(raw.stampsUi || {}) },
+    stampsUi: {
+      ...base.stampsUi,
+      ...(raw.stampsUi || {}),
+      doodle: Array.isArray(raw.stampsUi?.doodle) ? raw.stampsUi.doodle : [],
+    },
     selectedStampId: raw.selectedStampId || library.stamps[0]?.id || null,
   };
 }

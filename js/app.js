@@ -6,7 +6,7 @@ import {
 import { dist, simplifyStroke, boundsOfStrokes } from "./geometry.js";
 import { layoutText, normalizeStrokes, strokesToSvg } from "./layout.js";
 import { strokesToGcode, calibrationSquareGcode } from "./gcode.js";
-import { imageDataToStamp, rasterToImageData } from "./trace.js";
+import { imageDataToStamp, rasterToImageData, normalizeStamp } from "./trace.js";
 import { placementsToStrokes, funRunPlacements, hitTestPlacement } from "./stamps.js";
 import {
   loadProject, persistProject, projectToJson, parseIncomingFile,
@@ -37,6 +37,8 @@ let selectedVariant = 0;
 let lastCompose = { strokes: [] };
 let stampImage = null;
 let lastTrace = null;
+let doodleStrokes = [];
+let doodleCurrent = null;
 let placements = loadPlacements();
 let selectedStampId = null;
 let selectedPlacement = -1;
@@ -57,6 +59,7 @@ function collectProject() {
       xHeight: Number($("x-height").value) || 3.2,
       lineHeight: Number($("line-height").value) || 2.6,
       tracking: Number($("tracking").value) || 0.14,
+      wordSpace: Number($("word-space").value) || 0.42,
       seed: Number($("seed").value) || 7,
       jitter: Number($("jitter").value) || 0,
       stampSize: Number($("stamp-size").value) || 28,
@@ -70,10 +73,12 @@ function collectProject() {
     },
     stampsUi: {
       name: $("stamp-name").value,
+      source: $("stamp-source").value,
       mode: $("trace-mode").value,
       threshold: Number($("trace-threshold").value),
       join: Number($("trace-join").value),
       invert: $("trace-invert").checked,
+      doodle: doodleStrokes,
     },
     selectedStampId,
   };
@@ -91,6 +96,7 @@ function applyProject(project) {
   $("x-height").value = project.compose?.xHeight ?? 3.2;
   $("line-height").value = project.compose?.lineHeight ?? 2.6;
   $("tracking").value = project.compose?.tracking ?? 0.14;
+  $("word-space").value = project.compose?.wordSpace ?? 0.42;
   $("seed").value = project.compose?.seed ?? 7;
   $("jitter").value = project.compose?.jitter ?? 55;
   $("stamp-size").value = project.compose?.stampSize ?? 28;
@@ -101,13 +107,17 @@ function applyProject(project) {
   $("word-target").value = project.capture?.word || "the";
 
   $("stamp-name").value = project.stampsUi?.name || "doodle";
+  $("stamp-source").value = project.stampsUi?.source === "doodle" ? "doodle" : "photo";
   $("trace-mode").value = project.stampsUi?.mode || "outline";
   $("trace-threshold").value = project.stampsUi?.threshold ?? 145;
   $("trace-join").value = project.stampsUi?.join ?? 1;
   $("trace-invert").checked = Boolean(project.stampsUi?.invert);
+  doodleStrokes = Array.isArray(project.stampsUi?.doodle) ? project.stampsUi.doodle : [];
+  doodleCurrent = null;
 
   fillMachineForm();
   syncMode();
+  syncStampSource();
   renderGrid();
   renderVariants();
   renderStampLists();
@@ -255,6 +265,7 @@ function drawCompose() {
   const result = layoutText(library, $("note-text").value, {
     xHeightMm: Number($("x-height").value) || 3.2,
     tracking: Number($("tracking").value) || 0.14,
+    wordSpace: Number($("word-space").value) || 0.42,
     lineHeight: Number($("line-height").value) || 2.6,
     maxWidth: Number(machine.paperWidth) || 170,
     seed: Number($("seed").value) || 1,
@@ -474,6 +485,32 @@ function paperFromEvent(canvas, event) {
   };
 }
 
+function doodleMode() {
+  return $("stamp-source").value === "doodle";
+}
+
+function syncStampSource() {
+  const doodle = doodleMode();
+  document.querySelectorAll(".stamp-photo-only").forEach((el) => { el.hidden = doodle; });
+  $("stamp-doodle-tools").hidden = !doodle;
+  if (doodle) {
+    $("stamp-status").textContent = doodleStrokes.length
+      ? `${doodleStrokes.length} stroke${doodleStrokes.length === 1 ? "" : "s"}. Save, then stamp them onto Compose.`
+      : "Draw on the paper with a stylus or mouse. Stroke order is how the pen will move.";
+  } else if (lastTrace?.count) {
+    $("stamp-status").textContent = `${lastTrace.count} paths ready. Save, then stamp them onto Compose.`;
+  } else {
+    $("stamp-status").textContent = "Load a photo of a drawing on plain paper. Darker marks become paths.";
+  }
+  drawStampPreview();
+}
+
+function doodleInk() {
+  const ink = [...doodleStrokes];
+  if (doodleCurrent?.length) ink.push(doodleCurrent);
+  return ink;
+}
+
 function retraceStamp() {
   if (!stampImage) return;
   lastTrace = imageDataToStamp(rasterToImageData(stampImage), {
@@ -484,13 +521,51 @@ function retraceStamp() {
     minBlob: 18,
     simplify: 1.5,
   });
-  drawStampPreview();
-  $("stamp-status").textContent = lastTrace.count
-    ? `${lastTrace.count} paths ready. Save, then stamp them onto Compose.`
-    : "No ink found — try a lower threshold, invert, or a higher-contrast photo.";
+  if (!doodleMode()) {
+    drawStampPreview();
+    $("stamp-status").textContent = lastTrace.count
+      ? `${lastTrace.count} paths ready. Save, then stamp them onto Compose.`
+      : "No ink found — try a lower threshold, invert, or a higher-contrast photo.";
+  }
+}
+
+function drawDoodlePreview() {
+  const canvas = $("stamp-canvas");
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#f3ead6";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = "rgba(70, 90, 140, 0.18)";
+  ctx.lineWidth = 1;
+  for (let y = 48; y < canvas.height; y += 32) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(canvas.width, y);
+    ctx.stroke();
+  }
+  const ink = doodleInk();
+  if (!ink.length) {
+    ctx.fillStyle = "#4a4036";
+    ctx.font = "28px Georgia, serif";
+    ctx.fillText("Draw a doodle here.", 48, canvas.height / 2);
+  }
+  ctx.strokeStyle = "#1c1712";
+  ctx.lineWidth = 3.2;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  for (const stroke of ink) {
+    if (stroke.length < 2) continue;
+    ctx.beginPath();
+    ctx.moveTo(stroke[0].x, stroke[0].y);
+    for (let i = 1; i < stroke.length; i++) ctx.lineTo(stroke[i].x, stroke[i].y);
+    ctx.stroke();
+  }
 }
 
 function drawStampPreview() {
+  if (doodleMode()) {
+    drawDoodlePreview();
+    return;
+  }
   const canvas = $("stamp-canvas");
   const ctx = canvas.getContext("2d");
   ctx.fillStyle = "#f3ead6";
@@ -556,9 +631,11 @@ function loadStampFile(file) {
   const img = new Image();
   img.onload = () => {
     stampImage = img;
+    $("stamp-source").value = "photo";
     if ($("stamp-name").value === "doodle") {
       $("stamp-name").value = file.name.replace(/\.[^.]+$/, "").slice(0, 40) || "doodle";
     }
+    syncStampSource();
     retraceStamp();
   };
   img.src = URL.createObjectURL(file);
@@ -609,7 +686,7 @@ function renderStampLists() {
   const stamps = library.stamps || [];
   if (!stamps.length) {
     box.innerHTML = `<p class="hint">No stamps yet.</p>`;
-    composeBox.innerHTML = `<p class="hint">Scan a drawing in Stamps first.</p>`;
+    composeBox.innerHTML = `<p class="hint">Draw or scan a stamp first.</p>`;
     return;
   }
   if (!selectedStampId || !stamps.some((s) => s.id === selectedStampId)) {
@@ -687,6 +764,72 @@ function wireComposeCanvas() {
   canvas.addEventListener("pointercancel", endDrag);
 }
 
+function wireStampCanvas() {
+  const canvas = $("stamp-canvas");
+  canvas.addEventListener("pointerdown", (e) => {
+    if (!doodleMode()) return;
+    canvas.setPointerCapture(e.pointerId);
+    doodleCurrent = [canvasPoint(canvas, e)];
+    drawStampPreview();
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if (!doodleCurrent) return;
+    const p = canvasPoint(canvas, e);
+    const last = doodleCurrent[doodleCurrent.length - 1];
+    if (dist(p, last) >= 1.6) doodleCurrent.push(p);
+    drawStampPreview();
+  });
+  const end = () => {
+    if (doodleCurrent && doodleCurrent.length > 1) doodleStrokes.push(doodleCurrent);
+    doodleCurrent = null;
+    if (doodleMode()) {
+      syncStampSource();
+      autosave();
+    }
+  };
+  canvas.addEventListener("pointerup", end);
+  canvas.addEventListener("pointercancel", end);
+}
+
+function saveStamp() {
+  let stamp;
+  if (doodleMode()) {
+    const simplified = doodleStrokes
+      .map((s) => simplifyStroke(s, 1.2))
+      .filter((s) => s.length >= 2);
+    if (!simplified.length) {
+      $("stamp-status").textContent = "Draw a doodle first.";
+      return;
+    }
+    const norm = normalizeStamp(simplified);
+    stamp = {
+      id: `stamp_${Date.now()}`,
+      name: $("stamp-name").value.trim() || "doodle",
+      strokes: norm.strokes,
+      width: norm.width,
+      height: norm.height,
+    };
+  } else {
+    if (!lastTrace?.count) {
+      $("stamp-status").textContent = "Trace a drawing first.";
+      return;
+    }
+    stamp = {
+      id: `stamp_${Date.now()}`,
+      name: $("stamp-name").value.trim() || "doodle",
+      strokes: lastTrace.strokes,
+      width: lastTrace.width,
+      height: lastTrace.height,
+    };
+  }
+  addStamp(library, stamp);
+  library = loadLibrary();
+  selectedStampId = stamp.id;
+  renderStampLists();
+  $("stamp-status").textContent = `Saved “${stamp.name}”. Open Compose, then click the page or Fun run.`;
+  autosave(true);
+}
+
 function wireCapture() {
   const canvas = $("capture-canvas");
   canvas.addEventListener("pointerdown", (e) => {
@@ -740,6 +883,7 @@ function fillMachineForm() {
   $("write-feed").value = machine.writeFeed;
   $("y-dir").value = machine.yDownIsNegative ? "neg" : "pos";
   $("home-xy").checked = machine.homeXY;
+  $("mirror-x").checked = machine.xMirror ?? (machine.flavor === "bambu_a1" || machine.preset === "bambu_a1");
   $("pen-z-offset").value = machine.penZOffset ?? 20;
   syncMachineHelp();
 }
@@ -757,6 +901,7 @@ function applyPresetToForm(p) {
   if (p.writeFeed != null) $("write-feed").value = p.writeFeed;
   if (p.yDownIsNegative != null) $("y-dir").value = p.yDownIsNegative ? "neg" : "pos";
   if (p.homeXY != null) $("home-xy").checked = p.homeXY;
+  $("mirror-x").checked = Boolean(p.xMirror);
   if (p.penZOffset != null) $("pen-z-offset").value = p.penZOffset;
 }
 
@@ -777,6 +922,7 @@ function readMachineForm() {
     writeFeed: Number($("write-feed").value),
     yDownIsNegative: $("y-dir").value === "neg",
     homeXY: $("home-xy").checked,
+    xMirror: $("mirror-x").checked,
     flavor: PRESETS[$("preset").value]?.flavor || "marlin",
     penZOffset: Number($("pen-z-offset").value) || 20,
   };
@@ -815,6 +961,7 @@ function initNav() {
 function init() {
   initNav();
   wireCapture();
+  wireStampCanvas();
   wireComposeCanvas();
 
   loadProject().then((project) => {
@@ -823,6 +970,7 @@ function init() {
   }).catch((err) => {
     console.warn(err);
     fillMachineForm();
+    syncStampSource();
     renderGrid();
     renderVariants();
     renderStampLists();
@@ -858,7 +1006,7 @@ function init() {
     drawCapture();
   });
 
-  ["note-text", "x-height", "line-height", "tracking", "seed", "jitter"].forEach((id) => {
+  ["note-text", "x-height", "line-height", "tracking", "word-space", "seed", "jitter"].forEach((id) => {
     $(id).addEventListener("input", () => { drawCompose(); autosave(); });
   });
   $("load-stamp-image").addEventListener("click", () => $("stamp-file").click());
@@ -874,24 +1022,19 @@ function init() {
     $(id).addEventListener("input", () => { retraceStamp(); autosave(); });
     $(id).addEventListener("change", () => { retraceStamp(); autosave(); });
   });
-  $("save-stamp").addEventListener("click", () => {
-    if (!lastTrace?.count) {
-      $("stamp-status").textContent = "Trace a drawing first.";
-      return;
-    }
-    const stamp = {
-      id: `stamp_${Date.now()}`,
-      name: $("stamp-name").value.trim() || "doodle",
-      strokes: lastTrace.strokes,
-      width: lastTrace.width,
-      height: lastTrace.height,
-    };
-    addStamp(library, stamp);
-    library = loadLibrary();
-    selectedStampId = stamp.id;
-    renderStampLists();
-    $("stamp-status").textContent = `Saved “${stamp.name}”. Open Compose, then click the page or Fun run.`;
-    autosave(true);
+  $("save-stamp").addEventListener("click", saveStamp);
+  $("stamp-source").addEventListener("change", () => { syncStampSource(); autosave(); });
+  $("undo-doodle").addEventListener("click", () => {
+    doodleStrokes.pop();
+    doodleCurrent = null;
+    syncStampSource();
+    autosave();
+  });
+  $("clear-doodle").addEventListener("click", () => {
+    doodleStrokes = [];
+    doodleCurrent = null;
+    syncStampSource();
+    autosave();
   });
   $("fun-run").addEventListener("click", () => {
     const stamp = library.stamps?.find((s) => s.id === selectedStampId);
@@ -938,7 +1081,7 @@ function init() {
     readMachineForm();
     drawCompose();
   });
-  ["bed-x", "bed-y", "origin-x", "origin-y", "paper-w", "paper-h", "z-up", "z-down", "travel-feed", "write-feed", "y-dir", "home-xy", "pen-z-offset"].forEach((id) => {
+  ["bed-x", "bed-y", "origin-x", "origin-y", "paper-w", "paper-h", "z-up", "z-down", "travel-feed", "write-feed", "y-dir", "home-xy", "mirror-x", "pen-z-offset"].forEach((id) => {
     $(id).addEventListener("change", () => { readMachineForm(); drawCompose(); });
   });
   $("save-machine").addEventListener("click", () => { readMachineForm(); setStatus("Printer settings saved."); });
@@ -966,6 +1109,8 @@ function init() {
     overlay = { img: null, opacity: overlay.opacity };
     stampImage = null;
     lastTrace = null;
+    doodleStrokes = [];
+    doodleCurrent = null;
     selectedPlacement = -1;
     dragging = null;
     await wipeStoredProject();
@@ -1007,8 +1152,16 @@ function init() {
     if (e.target.matches("input, textarea")) return;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
       e.preventDefault();
-      strokes.pop();
-      drawCapture();
+      if ($("panel-stamps").classList.contains("active") && doodleMode()) {
+        doodleStrokes.pop();
+        doodleCurrent = null;
+        syncStampSource();
+        autosave();
+      } else {
+        strokes.pop();
+        drawCapture();
+        autosave();
+      }
     }
     if ((e.key === "Delete" || e.key === "Backspace") && selectedPlacement >= 0) {
       e.preventDefault();
