@@ -624,10 +624,7 @@ function syncTraceControls() {
   document.querySelectorAll(".stamp-binary-only").forEach((el) => { el.hidden = doodle || shade; });
   document.querySelectorAll(".stamp-shade-only").forEach((el) => { el.hidden = doodle || !shade; });
   const label = $("trace-threshold-label");
-  if (label) {
-    const mode = $("trace-mode").value;
-    label.textContent = !shade ? "Ink threshold" : mode === "spiral" ? "Contrast" : "Skip highlights";
-  }
+  if (label) label.textContent = shade ? "Contrast" : "Ink threshold";
   const shadesVal = $("trace-shades-val");
   if (shadesVal && $("trace-shades")) shadesVal.textContent = String($("trace-shades").value);
 }
@@ -676,7 +673,7 @@ function retraceStamp() {
     $("stamp-status").textContent = lastTrace.count
       ? `${lastTrace.count} paths ready${shade ? ` · ${Number($("trace-shades").value) || 32} shades` : ""}. Save, then stamp them onto Compose.`
       : shade
-        ? "No shade paths — lower Skip highlights, raise density, or invert."
+        ? "No shade paths — raise Contrast, raise density, or invert."
         : "No ink found — try a lower threshold, invert, or a higher-contrast photo.";
   }
 }

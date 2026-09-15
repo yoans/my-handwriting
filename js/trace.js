@@ -325,12 +325,14 @@ function sampleGray(gray, w, h, x, y) {
   return a * (1 - fy) + b * fy;
 }
 
-function shadePitch(density) {
-  return Math.max(2.4, 8.4 - Number(density || 4) * 0.72);
+function sampleNearest(gray, w, h, x, y) {
+  const ix = Math.max(0, Math.min(w - 1, Math.round(x)));
+  const iy = Math.max(0, Math.min(h - 1, Math.round(y)));
+  return gray[iy * w + ix];
 }
 
-function minDarkFromThreshold(threshold) {
-  return Math.max(0.03, ((255 - Number(threshold || 145)) / 255) * 0.55);
+function shadePitch(density) {
+  return Math.max(2.4, 8.4 - Number(density || 4) * 0.72);
 }
 
 function flushPath(strokes, path) {
@@ -393,31 +395,49 @@ function contrastGamma(threshold) {
   return 1.7 - Math.max(0, Math.min(1, t)) * 1.15;
 }
 
-function shadeTone(dark, minDark, shades) {
-  let t = Math.max(0, Math.min(1, Number(dark)));
-  if (minDark > 0.001) t = Math.max(0, (t - minDark) / Math.max(1 - minDark, 0.08));
-  const n = Math.max(2, Math.min(100, Math.round(Number(shades) || 32)));
-  t = Math.round(t * (n - 1)) / (n - 1);
-  return t;
+function shadePitches(pitch) {
+  const minPitch = Math.max(0.48, pitch * 0.14);
+  const maxPitch = Math.max(minPitch + 1.35, pitch * 3.15);
+  return { minPitch, maxPitch };
 }
 
 function pitchFromTone(t, minPitch, maxPitch) {
   const densMin = 1 / maxPitch;
   const densMax = 1 / minPitch;
-  return 1 / (densMin + (densMax - densMin) * t);
+  return 1 / (densMin + (densMax - densMin) * Math.max(0, Math.min(1, t)));
 }
 
-function spiralShade(gray, w, h, { pitch, minDark, shades }) {
-  const cx = (w - 1) / 2;
-  const cy = (h - 1) / 2;
-  const maxR = Math.hypot(cx, cy) + 1;
-  const minPitch = Math.max(0.42, pitch * 0.11);
-  const maxPitch = Math.max(minPitch + 1.4, pitch * 3.35);
+function strideFromTone(t, minPitch, maxPitch) {
+  return Math.max(1, Math.round(pitchFromTone(t, minPitch, maxPitch) / minPitch));
+}
+
+function shadeCenter(gray, w, h) {
+  let mass = 0;
+  let sx = 0;
+  let sy = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const t = gray[y * w + x];
+      if (t < 0.06) continue;
+      mass += t;
+      sx += x * t;
+      sy += y * t;
+    }
+  }
+  if (mass < 1e-4) return { cx: (w - 1) / 2, cy: (h - 1) / 2 };
+  return { cx: sx / mass, cy: sy / mass };
+}
+
+function spiralShade(gray, w, h, { pitch }) {
+  const { cx, cy } = shadeCenter(gray, w, h);
+  const maxR = Math.hypot(Math.max(cx, w - 1 - cx), Math.max(cy, h - 1 - cy)) + 2;
+  const { minPitch, maxPitch } = shadePitches(pitch);
   const ds = 0.72;
   const strokes = [];
   let path = [];
   let r = Math.max(0.8, minPitch * 0.35);
   let theta = 0;
+  let smoothT = 0.5;
   let guard = 0;
   const maxPts = 220000;
   while (r < maxR && guard++ < maxPts) {
@@ -426,10 +446,10 @@ function spiralShade(gray, w, h, { pitch, minDark, shades }) {
     const y = cy + r * Math.sin(theta);
     if (x >= 0 && y >= 0 && x < w && y < h) {
       const t = sampleGray(gray, w, h, x, y);
-      const localPitch = pitchFromTone(t, minPitch, maxPitch);
+      smoothT += (t - smoothT) * 0.1;
       path.push({ x, y });
       theta += dTheta;
-      r += (localPitch / (Math.PI * 2)) * dTheta;
+      r += (pitchFromTone(smoothT, minPitch, maxPitch) / (Math.PI * 2)) * dTheta;
     } else {
       if (path.length >= 2) strokes.push(path);
       path = [];
@@ -441,101 +461,94 @@ function spiralShade(gray, w, h, { pitch, minDark, shades }) {
   return strokes;
 }
 
-function ringsShade(gray, w, h, { pitch, minDark }) {
-  const cx = (w - 1) / 2;
-  const cy = (h - 1) / 2;
-  const maxR = Math.hypot(cx, cy);
+function ringsShade(gray, w, h, { pitch }) {
+  const { cx, cy } = shadeCenter(gray, w, h);
+  const maxR = Math.hypot(Math.max(cx, w - 1 - cx), Math.max(cy, h - 1 - cy)) + 1;
+  const { minPitch, maxPitch } = shadePitches(pitch);
   const strokes = [];
-  for (let r = pitch * 0.6; r < maxR; r += pitch) {
-    const steps = Math.max(32, Math.round((Math.PI * 2 * r) / 1.2));
+  let ring = 0;
+  for (let r = minPitch; r < maxR; r += minPitch, ring++) {
+    const steps = Math.max(32, Math.round((Math.PI * 2 * r) / 1.15));
     let path = [];
     for (let i = 0; i <= steps; i++) {
       const theta = (i / steps) * Math.PI * 2;
-      const cs = Math.cos(theta);
-      const sn = Math.sin(theta);
-      const x = cx + r * cs;
-      const y = cy + r * sn;
+      const x = cx + r * Math.cos(theta);
+      const y = cy + r * Math.sin(theta);
       if (x < 0 || y < 0 || x >= w || y >= h) {
         path = flushPath(strokes, path);
         continue;
       }
-      const dark = sampleGray(gray, w, h, x, y);
-      if (dark < minDark) {
+      const t = sampleNearest(gray, w, h, x, y);
+      if (t < 0.02 || ring % strideFromTone(t, minPitch, maxPitch) !== 0) {
         path = flushPath(strokes, path);
         continue;
       }
-      const t = Math.min(1, (dark - minDark) / Math.max(1 - minDark, 0.05));
-      const amp = t * pitch * 0.42;
-      const wobble = Math.sin(theta * Math.max(6, r * 0.35));
-      path.push({ x: x + cs * amp * wobble, y: y + sn * amp * wobble });
+      path.push({ x, y });
     }
     flushPath(strokes, path);
   }
   return strokes;
 }
 
-function squiggleShade(gray, w, h, { pitch, minDark }) {
+function squiggleShade(gray, w, h, { pitch }) {
+  const { minPitch, maxPitch } = shadePitches(pitch);
+  const amp = minPitch * 0.42;
   const strokes = [];
-  for (let y = pitch * 0.45; y < h; y += pitch) {
+  let row = 0;
+  for (let y = minPitch * 0.4; y < h; y += minPitch, row++) {
     let path = [];
-    for (let x = 0; x < w; x += 1.15) {
-      const dark = sampleGray(gray, w, h, x, y);
-      if (dark < minDark) {
+    for (let x = 0; x < w; x += 1.12) {
+      const t = sampleNearest(gray, w, h, x, y);
+      if (t < 0.02 || row % strideFromTone(t, minPitch, maxPitch) !== 0) {
         path = flushPath(strokes, path);
         continue;
       }
-      const t = Math.min(1, (dark - minDark) / Math.max(1 - minDark, 0.05));
-      const amp = t * pitch * 0.52;
-      path.push({ x, y: y + Math.sin(x * 0.62) * amp });
+      path.push({ x, y: y + Math.sin(x * 0.55) * amp });
     }
     flushPath(strokes, path);
   }
   return strokes;
 }
 
-function hatchShade(gray, w, h, { pitch, minDark }) {
-  const strokes = [];
+function hatchFamily(gray, w, h, angle, minPitch, maxPitch, minT, strokes) {
   const diag = Math.hypot(w, h);
-  const passDark = [minDark, minDark + 0.28];
-  const angles = [0.38, 0.38 + Math.PI / 2];
-  for (let pass = 0; pass < 2; pass++) {
-    const angle = angles[pass];
-    const ca = Math.cos(angle);
-    const sa = Math.sin(angle);
-    const px = -sa;
-    const py = ca;
-    const cut = passDark[pass];
-    for (let line = -diag; line <= diag; line += pitch) {
-      const ox = w / 2 + px * line;
-      const oy = h / 2 + py * line;
-      let path = [];
-      for (let t = -diag; t <= diag; t += 1.2) {
-        const x = ox + ca * t;
-        const y = oy + sa * t;
-        if (x < 0 || y < 0 || x >= w || y >= h) {
-          path = flushPath(strokes, path);
-          continue;
-        }
-        const dark = sampleGray(gray, w, h, x, y);
-        if (dark < cut) {
-          path = flushPath(strokes, path);
-          continue;
-        }
-        const tInk = Math.min(1, (dark - cut) / Math.max(1 - cut, 0.05));
-        const amp = tInk * pitch * 0.22;
-        const wobble = Math.sin(t * 0.28);
-        path.push({ x: x + px * amp * wobble, y: y + py * amp * wobble });
+  const ca = Math.cos(angle);
+  const sa = Math.sin(angle);
+  const px = -sa;
+  const py = ca;
+  let lineIndex = 0;
+  for (let line = -diag; line <= diag; line += minPitch, lineIndex++) {
+    const ox = w / 2 + px * line;
+    const oy = h / 2 + py * line;
+    let path = [];
+    for (let u = -diag; u <= diag; u += 1.15) {
+      const x = ox + ca * u;
+      const y = oy + sa * u;
+      if (x < 0 || y < 0 || x >= w || y >= h) {
+        path = flushPath(strokes, path);
+        continue;
       }
-      flushPath(strokes, path);
+      const t = sampleNearest(gray, w, h, x, y);
+      if (t < minT + 0.02 || lineIndex % strideFromTone(t, minPitch, maxPitch) !== 0) {
+        path = flushPath(strokes, path);
+        continue;
+      }
+      path.push({ x, y });
     }
+    flushPath(strokes, path);
   }
+}
+
+function hatchShade(gray, w, h, { pitch }) {
+  const { minPitch, maxPitch } = shadePitches(pitch);
+  const strokes = [];
+  hatchFamily(gray, w, h, 0.38, minPitch, maxPitch, 0, strokes);
+  hatchFamily(gray, w, h, 0.38 + Math.PI / 2, minPitch, maxPitch, 0.48, strokes);
   return strokes;
 }
 
 function shadeImage(gray, w, h, mode, options) {
-  const pitch = shadePitch(options.density);
-  const minDark = minDarkFromThreshold(options.threshold);
-  const opts = { pitch, minDark, shades: options.shades ?? 32 };
+  const opts = { pitch: shadePitch(options.density) };
   if (mode === "hatch") return hatchShade(gray, w, h, opts);
   if (mode === "squiggle") return squiggleShade(gray, w, h, opts);
   if (mode === "rings") return ringsShade(gray, w, h, opts);
@@ -578,7 +591,7 @@ export function imageDataToStamp(imageData, options = {}) {
     gray = applyGamma(gray, contrastGamma(options.threshold));
     gray = quantizeGray(gray, options.shades ?? 32);
     const raw = shadeImage(gray, w, h, mode, options);
-    const simplify = mode === "spiral" ? 0.32 : (options.simplify ?? 0.7);
+    const simplify = mode === "spiral" ? 0.32 : mode === "squiggle" ? 0.18 : 0.48;
     const strokes = raw
       .map((stroke) => simplifyStroke(stroke, simplify))
       .filter((stroke) => stroke.length >= 2);
