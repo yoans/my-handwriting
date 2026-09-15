@@ -105,8 +105,8 @@
       <section class="panel" id="panel-stamps">
         <h2>Stamps</h2>
         <p class="lede">
-          Draw a doodle here, or photo a kid drawing / sticker. Those pen paths stamp onto the note —
-          one copy, or a whole wiggly parade.
+          Draw a doodle, trace a scan, or turn a photo into shaded pen work (spiral, hatch, squiggle, rings).
+          Those paths stamp onto the note — one copy, or a whole wiggly parade.
         </p>
         <div class="row">
           <div class="stack">
@@ -138,15 +138,23 @@
               <option value="outline">Outline (crayon / marker)</option>
               <option value="centerline">Centerline (thin pen)</option>
               <option value="scribble">Outline + scribble fill</option>
+              <option value="spiral">Spiral shade</option>
+              <option value="hatch">Hatch shade</option>
+              <option value="squiggle">Squiggle shade</option>
+              <option value="rings">Ring shade</option>
             </select>
           </div>
           <div class="stack stamp-photo-only">
-            <label for="trace-threshold">Ink threshold</label>
+            <label for="trace-threshold" id="trace-threshold-label">Ink threshold</label>
             <input id="trace-threshold" type="range" min="40" max="220" value="145" />
           </div>
-          <div class="stack stamp-photo-only">
+          <div class="stack stamp-photo-only stamp-binary-only">
             <label for="trace-join">Join gaps</label>
             <input id="trace-join" type="range" min="0" max="3" value="1" />
+          </div>
+          <div class="stack stamp-photo-only stamp-shade-only" hidden>
+            <label for="trace-density">Shade density</label>
+            <input id="trace-density" type="range" min="1" max="8" value="4" />
           </div>
         </div>
         <div class="row" style="margin-top:10px;">
@@ -229,6 +237,15 @@
           <div class="variant-list" id="compose-stamp-list"></div>
         </div>
         <p class="missing" id="missing-list"></p>
+        <div class="bounds-bar" id="bounds-bar" data-state="ok">
+          <p class="bounds-status" id="bounds-status">On the page and on the bed</p>
+          <div class="toolbar">
+            <button class="btn" id="fit-page">Shrink to fit page</button>
+            <button class="btn secondary" id="nudge-stamps">Slide stamps onto page</button>
+            <button class="btn ghost" id="clamp-paper">Clamp page to bed</button>
+            <label class="hint"><input type="checkbox" id="auto-fix-export" checked /> Auto-fix on download</label>
+          </div>
+        </div>
         <div class="paper-stage">
           <div class="canvas-wrap">
             <canvas id="compose-canvas" width="1400" height="900"></canvas>

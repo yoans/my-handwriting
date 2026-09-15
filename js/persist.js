@@ -26,6 +26,7 @@ export function emptyProject() {
       jitter: 55,
       stampSize: 28,
       funRunCount: 6,
+      autoFixExport: true,
     },
     capture: {
       mode: "glyph",
@@ -39,6 +40,7 @@ export function emptyProject() {
       mode: "outline",
       threshold: 145,
       join: 1,
+      density: 4,
       invert: false,
       doodle: [],
     },

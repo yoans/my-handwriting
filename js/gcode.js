@@ -111,19 +111,83 @@ export function paperToMachine(p, machine) {
   return { x, y };
 }
 
+export function writableMachineBounds(machine) {
+  const w = Number(machine.paperWidth) || 0;
+  const h = Number(machine.paperHeight) || 0;
+  const corners = [
+    { x: 0, y: 0 },
+    { x: w, y: 0 },
+    { x: 0, y: h },
+    { x: w, y: h },
+  ].map((p) => paperToMachine(p, machine));
+  const xs = corners.map((p) => p.x);
+  const ys = corners.map((p) => p.y);
+  return {
+    minX: Math.min(...xs),
+    maxX: Math.max(...xs),
+    minY: Math.min(...ys),
+    maxY: Math.max(...ys),
+  };
+}
+
+export function analyzeBounds(strokes, machine) {
+  const paperW = Number(machine.paperWidth) || 0;
+  const paperH = Number(machine.paperHeight) || 0;
+  const bedX = Number(machine.bedX) || 0;
+  const bedY = Number(machine.bedY) || 0;
+  const slop = 0.25;
+  const extra = { left: 0, right: 0, top: 0, bottom: 0 };
+  let offPaper = 0;
+  let offBed = 0;
+  let samples = 0;
+  for (const stroke of strokes || []) {
+    for (const p of stroke) {
+      samples += 1;
+      extra.left = Math.max(extra.left, -p.x);
+      extra.right = Math.max(extra.right, p.x - paperW);
+      extra.top = Math.max(extra.top, -p.y);
+      extra.bottom = Math.max(extra.bottom, p.y - paperH);
+      if (p.x < -slop || p.y < -slop || p.x > paperW + slop || p.y > paperH + slop) offPaper += 1;
+      const m = paperToMachine(p, machine);
+      if (m.x < -slop || m.y < -slop || m.x > bedX + slop || m.y > bedY + slop) offBed += 1;
+    }
+  }
+  const page = writableMachineBounds(machine);
+  const pageOffBed = page.minX < -slop || page.minY < -slop
+    || page.maxX > bedX + slop || page.maxY > bedY + slop;
+  const paperOff = extra.left > slop || extra.right > slop || extra.top > slop || extra.bottom > slop;
+  const bits = [];
+  if (pageOffBed) bits.push("writable area sits off the bed — shrink paper size or move origin");
+  if (extra.left > slop) bits.push(`${extra.left.toFixed(1)} mm off the left`);
+  if (extra.right > slop) bits.push(`${extra.right.toFixed(1)} mm off the right`);
+  if (extra.top > slop) bits.push(`${extra.top.toFixed(1)} mm off the top`);
+  if (extra.bottom > slop) bits.push(`${extra.bottom.toFixed(1)} mm off the bottom`);
+  if (offBed && !pageOffBed) bits.push(`${offBed} G-code points off the bed`);
+  return {
+    extra,
+    offPaper,
+    offBed,
+    samples,
+    paperOff,
+    pageOffBed,
+    page,
+    ok: Boolean(samples) && !paperOff && !offBed && !pageOffBed,
+    empty: samples === 0,
+    summary: bits.length ? bits.join(" · ") : "On the page and on the bed",
+  };
+}
+
 export function strokesToGcode(strokes, machine, { dryRun = false, title = "note" } = {}) {
   const zWrite = dryRun ? machine.zUp : machine.zDown;
   const lines = header(machine, [`; job ${title}${dryRun ? " DRY RUN (pen stays up)" : ""}`]);
   let penDown = false;
   const warnings = [];
-
-  const inBounds = (pt) =>
-    pt.x >= 0 && pt.y >= 0 && pt.x <= machine.bedX && pt.y <= machine.bedY;
+  const report = analyzeBounds(strokes, machine);
+  if (!report.ok && !report.empty) warnings.push(report.summary);
 
   for (const stroke of strokes) {
     if (!stroke.length) continue;
     const start = paperToMachine(stroke[0], machine);
-    if (!inBounds(start)) warnings.push(`travel out of bed near ${fmt(start.x)},${fmt(start.y)}`);
     if (penDown) {
       lines.push(`G0 Z${fmt(machine.zUp)} F${machine.travelFeed}`);
       penDown = false;
@@ -133,7 +197,6 @@ export function strokesToGcode(strokes, machine, { dryRun = false, title = "note
     penDown = true;
     for (let i = 1; i < stroke.length; i++) {
       const m = paperToMachine(stroke[i], machine);
-      if (!inBounds(m)) warnings.push(`write out of bed near ${fmt(m.x)},${fmt(m.y)}`);
       lines.push(`G1 X${fmt(m.x)} Y${fmt(m.y)} F${machine.writeFeed}`);
     }
   }
@@ -146,7 +209,7 @@ export function strokesToGcode(strokes, machine, { dryRun = false, title = "note
     lines.splice(4, 0, ...uniqueWarn.slice(0, 12).map((w) => `; WARNING: ${w}`));
   }
 
-  return { gcode: lines.join("\n") + "\n", warnings: uniqueWarn };
+  return { gcode: lines.join("\n") + "\n", warnings: uniqueWarn, report };
 }
 
 export function calibrationSquareGcode(machine) {

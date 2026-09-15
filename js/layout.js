@@ -154,7 +154,7 @@ export function layoutText(library, text, options) {
       } else {
         x += space;
       }
-      if (x > marginLeft + maxWidth) {
+      if (x > maxWidth) {
         y += xHeightMm * lineHeight;
         startLine();
       }
@@ -192,7 +192,7 @@ export function layoutText(library, text, options) {
     }
 
     b = boundsOfStrokes(placed);
-    if (prev && b.maxX > marginLeft + maxWidth) {
+    if (prev && b.maxX > maxWidth) {
       y += xHeightMm * lineHeight;
       startLine();
       placed = placeGlyphAt(glyph, 0, y, scale, jitter, rand);

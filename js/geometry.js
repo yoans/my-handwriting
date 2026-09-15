@@ -56,6 +56,38 @@ export function transformStrokes(strokes, fn) {
   return strokes.map((stroke) => stroke.map(fn));
 }
 
+/** Translate, then uniformly scale if needed, so ink sits inside the box. */
+export function fitStrokesToBox(strokes, box, pad = 2) {
+  const x0 = box.minX + pad;
+  const y0 = box.minY + pad;
+  const x1 = box.maxX - pad;
+  const y1 = box.maxY - pad;
+  const innerW = Math.max(x1 - x0, 1);
+  const innerH = Math.max(y1 - y0, 1);
+  const b = boundsOfStrokes(strokes);
+  if (b.width <= 0 && b.height <= 0) return strokes;
+
+  let dx = 0;
+  let dy = 0;
+  if (b.minX < x0) dx = x0 - b.minX;
+  if (b.minY < y0) dy = y0 - b.minY;
+  if (b.maxX + dx > x1) dx = x1 - b.maxX;
+  if (b.maxY + dy > y1) dy = y1 - b.maxY;
+  const shifted = (dx || dy)
+    ? transformStrokes(strokes, (p) => ({ x: p.x + dx, y: p.y + dy }))
+    : strokes;
+  const b2 = boundsOfStrokes(shifted);
+  const sx = innerW / Math.max(b2.width, 0.001);
+  const sy = innerH / Math.max(b2.height, 0.001);
+  const s = Math.min(sx, sy, 1);
+  if (s >= 0.999) return shifted;
+  const scaled = transformStrokes(shifted, (p) => ({
+    x: x0 + (p.x - b2.minX) * s,
+    y: y0 + (p.y - b2.minY) * s,
+  }));
+  return scaled;
+}
+
 export function seededRandom(seed) {
   let s = seed >>> 0;
   return () => {

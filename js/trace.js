@@ -269,6 +269,217 @@ function scribbleFill(bin, w, h) {
   return strokes;
 }
 
+export function isShadeMode(mode) {
+  return mode === "spiral" || mode === "hatch" || mode === "squiggle" || mode === "rings";
+}
+
+function imageToGray(data, w, h, invert) {
+  const gray = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    const o = i * 4;
+    if (data[o + 3] < 20) {
+      gray[i] = 0;
+      continue;
+    }
+    const light = luma(data[o], data[o + 1], data[o + 2]) / 255;
+    gray[i] = invert ? light : 1 - light;
+  }
+  return gray;
+}
+
+function blurGray(gray, w, h) {
+  const out = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let sum = 0;
+      let n = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        const yy = y + dy;
+        if (yy < 0 || yy >= h) continue;
+        for (let dx = -1; dx <= 1; dx++) {
+          const xx = x + dx;
+          if (xx < 0 || xx >= w) continue;
+          sum += gray[yy * w + xx];
+          n += 1;
+        }
+      }
+      out[y * w + x] = sum / n;
+    }
+  }
+  return out;
+}
+
+function sampleGray(gray, w, h, x, y) {
+  if (x < 0 || y < 0 || x >= w - 1 || y >= h - 1) {
+    const ix = Math.max(0, Math.min(w - 1, Math.round(x)));
+    const iy = Math.max(0, Math.min(h - 1, Math.round(y)));
+    return gray[iy * w + ix];
+  }
+  const x0 = Math.floor(x);
+  const y0 = Math.floor(y);
+  const fx = x - x0;
+  const fy = y - y0;
+  const i = y0 * w + x0;
+  const a = gray[i] * (1 - fx) + gray[i + 1] * fx;
+  const b = gray[i + w] * (1 - fx) + gray[i + w + 1] * fx;
+  return a * (1 - fy) + b * fy;
+}
+
+function shadePitch(density) {
+  return Math.max(2.4, 8.4 - Number(density || 4) * 0.72);
+}
+
+function minDarkFromThreshold(threshold) {
+  return Math.max(0.03, ((255 - Number(threshold || 145)) / 255) * 0.55);
+}
+
+function flushPath(strokes, path) {
+  if (path.length >= 2) strokes.push(path);
+  return [];
+}
+
+function spiralShade(gray, w, h, { pitch, minDark }) {
+  const cx = (w - 1) / 2;
+  const cy = (h - 1) / 2;
+  const maxR = Math.hypot(cx, cy) + pitch;
+  const strokes = [];
+  let path = [];
+  let theta = 0.2;
+  let guard = 0;
+  const maxPts = 90000;
+  while (guard++ < maxPts) {
+    const r = pitch * theta / (Math.PI * 2);
+    if (r > maxR) break;
+    const cs = Math.cos(theta);
+    const sn = Math.sin(theta);
+    const x = cx + r * cs;
+    const y = cy + r * sn;
+    const dTheta = Math.max(0.018, 1.15 / Math.max(r, 1));
+    if (x < -1 || y < -1 || x > w || y > h) {
+      path = flushPath(strokes, path);
+      theta += dTheta;
+      continue;
+    }
+    const dark = sampleGray(gray, w, h, x, y);
+    if (dark < minDark) {
+      path = flushPath(strokes, path);
+      theta += dTheta;
+      continue;
+    }
+    const t = Math.min(1, (dark - minDark) / Math.max(1 - minDark, 0.05));
+    const amp = t * pitch * 0.46;
+    const wobble = Math.sin(r * 1.65 + theta * 3.1);
+    path.push({
+      x: x + (-sn) * amp * wobble,
+      y: y + cs * amp * wobble,
+    });
+    theta += dTheta;
+  }
+  flushPath(strokes, path);
+  return strokes;
+}
+
+function ringsShade(gray, w, h, { pitch, minDark }) {
+  const cx = (w - 1) / 2;
+  const cy = (h - 1) / 2;
+  const maxR = Math.hypot(cx, cy);
+  const strokes = [];
+  for (let r = pitch * 0.6; r < maxR; r += pitch) {
+    const steps = Math.max(32, Math.round((Math.PI * 2 * r) / 1.2));
+    let path = [];
+    for (let i = 0; i <= steps; i++) {
+      const theta = (i / steps) * Math.PI * 2;
+      const cs = Math.cos(theta);
+      const sn = Math.sin(theta);
+      const x = cx + r * cs;
+      const y = cy + r * sn;
+      if (x < 0 || y < 0 || x >= w || y >= h) {
+        path = flushPath(strokes, path);
+        continue;
+      }
+      const dark = sampleGray(gray, w, h, x, y);
+      if (dark < minDark) {
+        path = flushPath(strokes, path);
+        continue;
+      }
+      const t = Math.min(1, (dark - minDark) / Math.max(1 - minDark, 0.05));
+      const amp = t * pitch * 0.42;
+      const wobble = Math.sin(theta * Math.max(6, r * 0.35));
+      path.push({ x: x + cs * amp * wobble, y: y + sn * amp * wobble });
+    }
+    flushPath(strokes, path);
+  }
+  return strokes;
+}
+
+function squiggleShade(gray, w, h, { pitch, minDark }) {
+  const strokes = [];
+  for (let y = pitch * 0.45; y < h; y += pitch) {
+    let path = [];
+    for (let x = 0; x < w; x += 1.15) {
+      const dark = sampleGray(gray, w, h, x, y);
+      if (dark < minDark) {
+        path = flushPath(strokes, path);
+        continue;
+      }
+      const t = Math.min(1, (dark - minDark) / Math.max(1 - minDark, 0.05));
+      const amp = t * pitch * 0.52;
+      path.push({ x, y: y + Math.sin(x * 0.62) * amp });
+    }
+    flushPath(strokes, path);
+  }
+  return strokes;
+}
+
+function hatchShade(gray, w, h, { pitch, minDark }) {
+  const strokes = [];
+  const diag = Math.hypot(w, h);
+  const passDark = [minDark, minDark + 0.28];
+  const angles = [0.38, 0.38 + Math.PI / 2];
+  for (let pass = 0; pass < 2; pass++) {
+    const angle = angles[pass];
+    const ca = Math.cos(angle);
+    const sa = Math.sin(angle);
+    const px = -sa;
+    const py = ca;
+    const cut = passDark[pass];
+    for (let line = -diag; line <= diag; line += pitch) {
+      const ox = w / 2 + px * line;
+      const oy = h / 2 + py * line;
+      let path = [];
+      for (let t = -diag; t <= diag; t += 1.2) {
+        const x = ox + ca * t;
+        const y = oy + sa * t;
+        if (x < 0 || y < 0 || x >= w || y >= h) {
+          path = flushPath(strokes, path);
+          continue;
+        }
+        const dark = sampleGray(gray, w, h, x, y);
+        if (dark < cut) {
+          path = flushPath(strokes, path);
+          continue;
+        }
+        const tInk = Math.min(1, (dark - cut) / Math.max(1 - cut, 0.05));
+        const amp = tInk * pitch * 0.22;
+        const wobble = Math.sin(t * 0.28);
+        path.push({ x: x + px * amp * wobble, y: y + py * amp * wobble });
+      }
+      flushPath(strokes, path);
+    }
+  }
+  return strokes;
+}
+
+function shadeImage(gray, w, h, mode, options) {
+  const pitch = shadePitch(options.density);
+  const minDark = minDarkFromThreshold(options.threshold);
+  const opts = { pitch, minDark };
+  if (mode === "hatch") return hatchShade(gray, w, h, opts);
+  if (mode === "squiggle") return squiggleShade(gray, w, h, opts);
+  if (mode === "rings") return ringsShade(gray, w, h, opts);
+  return spiralShade(gray, w, h, opts);
+}
+
 export function binaryToStrokes(bin, w, h, { mode = "outline", simplify = 1.4 } = {}) {
   let raw = [];
   if (mode === "centerline") raw = walkSkeleton(zhangSuen(bin, w, h), w, h);
@@ -296,12 +507,30 @@ export function normalizeStamp(strokes) {
 export function imageDataToStamp(imageData, options = {}) {
   const w = imageData.width;
   const h = imageData.height;
+  const mode = options.mode || "outline";
+
+  if (isShadeMode(mode)) {
+    let gray = imageToGray(imageData.data, w, h, options.invert);
+    gray = blurGray(gray, w, h);
+    gray = blurGray(gray, w, h);
+    const raw = shadeImage(gray, w, h, mode, options);
+    const strokes = raw
+      .map((stroke) => simplifyStroke(stroke, options.simplify ?? 0.7))
+      .filter((stroke) => stroke.length >= 2);
+    const preview = new Uint8Array(w * h);
+    for (let i = 0; i < gray.length; i++) preview[i] = Math.round(Math.max(0, Math.min(1, gray[i])) * 255);
+    if (!strokes.length) {
+      return { strokes: [], width: 1, height: 1, count: 0, preview, previewKind: "gray", w, h };
+    }
+    return { ...normalizeStamp(strokes), count: strokes.length, preview, previewKind: "gray", w, h };
+  }
+
   let bin = imageDataToBinary(imageData.data, w, h, options);
   bin = closeGaps(bin, w, h, options.joinGaps || 0);
   bin = despeckle(bin, w, h, options.minBlob || 18);
   const strokes = binaryToStrokes(bin, w, h, options);
-  if (!strokes.length) return { strokes: [], width: 1, height: 1, count: 0, preview: bin, w, h };
-  return { ...normalizeStamp(strokes), count: strokes.length, preview: bin, w, h };
+  if (!strokes.length) return { strokes: [], width: 1, height: 1, count: 0, preview: bin, previewKind: "bin", w, h };
+  return { ...normalizeStamp(strokes), count: strokes.length, preview: bin, previewKind: "bin", w, h };
 }
 
 export function rasterToImageData(img, maxEdge = 460) {

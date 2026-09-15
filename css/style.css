@@ -286,6 +286,29 @@ textarea {
   font-size: 0.95rem;
 }
 
+.bounds-bar {
+  margin: 10px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(196, 165, 116, 0.22);
+  background: rgba(243, 234, 214, 0.05);
+}
+
+.bounds-bar[data-state="bad"] {
+  border-color: rgba(180, 35, 24, 0.45);
+  background: rgba(139, 58, 50, 0.16);
+}
+
+.bounds-status {
+  margin: 0 0 10px;
+  color: var(--gold);
+  font-size: 0.95rem;
+}
+
+.bounds-bar[data-state="bad"] .bounds-status {
+  color: #f2b8b5;
+}
+
 .machine-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
