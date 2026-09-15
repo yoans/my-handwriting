@@ -79,6 +79,7 @@ function collectProject() {
       threshold: Number($("trace-threshold").value),
       join: Number($("trace-join").value),
       density: Number($("trace-density").value) || 4,
+      shades: Number($("trace-shades").value) || 32,
       invert: $("trace-invert").checked,
       doodle: doodleStrokes,
     },
@@ -115,6 +116,7 @@ function applyProject(project) {
   $("trace-threshold").value = project.stampsUi?.threshold ?? 145;
   $("trace-join").value = project.stampsUi?.join ?? 1;
   $("trace-density").value = project.stampsUi?.density ?? 4;
+  $("trace-shades").value = project.stampsUi?.shades ?? 32;
   $("trace-invert").checked = Boolean(project.stampsUi?.invert);
   doodleStrokes = Array.isArray(project.stampsUi?.doodle) ? project.stampsUi.doodle : [];
   doodleCurrent = null;
@@ -622,7 +624,12 @@ function syncTraceControls() {
   document.querySelectorAll(".stamp-binary-only").forEach((el) => { el.hidden = doodle || shade; });
   document.querySelectorAll(".stamp-shade-only").forEach((el) => { el.hidden = doodle || !shade; });
   const label = $("trace-threshold-label");
-  if (label) label.textContent = shade ? "Skip highlights" : "Ink threshold";
+  if (label) {
+    const mode = $("trace-mode").value;
+    label.textContent = !shade ? "Ink threshold" : mode === "spiral" ? "Contrast" : "Skip highlights";
+  }
+  const shadesVal = $("trace-shades-val");
+  if (shadesVal && $("trace-shades")) shadesVal.textContent = String($("trace-shades").value);
 }
 
 function syncStampSource() {
@@ -654,12 +661,13 @@ function retraceStamp() {
   if (!stampImage) return;
   const mode = $("trace-mode").value;
   const shade = isShadeMode(mode);
-  lastTrace = imageDataToStamp(rasterToImageData(stampImage, shade ? 520 : 460), {
+  lastTrace = imageDataToStamp(rasterToImageData(stampImage, shade ? 640 : 460), {
     threshold: Number($("trace-threshold").value),
     invert: $("trace-invert").checked,
     mode,
     joinGaps: Number($("trace-join").value),
     density: Number($("trace-density").value) || 4,
+    shades: Number($("trace-shades").value) || 32,
     minBlob: 18,
     simplify: shade ? 0.7 : 1.5,
   });
@@ -1195,9 +1203,9 @@ function init() {
     e.preventDefault();
     loadStampFile(e.dataTransfer.files?.[0]);
   });
-  ["trace-mode", "trace-threshold", "trace-join", "trace-density", "trace-invert"].forEach((id) => {
+  ["trace-mode", "trace-threshold", "trace-join", "trace-density", "trace-shades", "trace-invert"].forEach((id) => {
     const run = () => {
-      if (id === "trace-mode") syncTraceControls();
+      syncTraceControls();
       retraceStamp();
       autosave();
     };

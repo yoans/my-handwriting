@@ -41,6 +41,7 @@ export function emptyProject() {
       threshold: 145,
       join: 1,
       density: 4,
+      shades: 32,
       invert: false,
       doodle: [],
     },
