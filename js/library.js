@@ -48,8 +48,9 @@ export function glyphCount(library, ch) {
 }
 
 export function addGlyph(library, ch, glyph) {
-  if (!library.glyphs[ch]) library.glyphs[ch] = [];
-  library.glyphs[ch].push(glyph);
+  const existing = (library.glyphs[ch] || []).filter((g) => !g.demo);
+  existing.push(glyph);
+  library.glyphs[ch] = existing;
   saveLibrary(library);
 }
 
@@ -60,9 +61,9 @@ export function removeGlyph(library, ch, index) {
 }
 
 export function addWord(library, word, glyph) {
-  const key = word;
-  if (!library.words[key]) library.words[key] = [];
-  library.words[key].push(glyph);
+  const existing = (library.words[word] || []).filter((g) => !g.demo);
+  existing.push(glyph);
+  library.words[word] = existing;
   saveLibrary(library);
 }
 

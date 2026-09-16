@@ -3,22 +3,77 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>My Handwriting — stroke studio</title>
+  <title>My Handwriting — plot your own hand</title>
+  <meta name="description" content="Capture your handwriting, turn photos into pen shading, and export G-code for a pen in a 3D-printer toolhead. Runs in the browser." />
+  <meta name="theme-color" content="#0a0a0f" />
+  <link rel="canonical" href="https://yoans.github.io/my-handwriting/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://yoans.github.io/my-handwriting/" />
+  <meta property="og:title" content="My Handwriting — plot your own hand" />
+  <meta property="og:description" content="Capture ordered strokes, shade a photo with a pen path, export G-code. Your hand, not a font. Runs in the browser." />
+  <meta property="og:image" content="https://yoans.github.io/my-handwriting/og-image.jpg" />
+  <meta property="og:image:width" content="1280" />
+  <meta property="og:image:height" content="720" />
+  <meta property="og:image:alt" content="A 3D printer plotting a handwritten note on paper" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="My Handwriting — plot your own hand" />
+  <meta name="twitter:description" content="Capture ordered strokes, shade a photo with a pen path, export G-code. Runs in the browser." />
+  <meta name="twitter:image" content="https://yoans.github.io/my-handwriting/og-image.jpg" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="apple-touch-icon" href="og-image.jpg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
+  <div class="welcome" id="welcome" hidden>
+    <div class="welcome-card">
+      <p class="section-label">Build Beyond Belief</p>
+      <h2>Plot <span class="gradient-text">your</span> hand.</h2>
+      <p>
+        A 3D printer with a pen needs ordered strokes, not a font. Capture your letters,
+        turn a photo into shaded pen work, and export G-code. Nothing leaves this browser.
+      </p>
+      <div class="welcome-actions">
+        <button class="btn" type="button" data-start="capture">Write a letter</button>
+        <button class="btn secondary" type="button" data-start="stamps">Turn a photo into a stamp</button>
+        <button class="btn ghost" type="button" data-start="machine">Set up the A1</button>
+      </div>
+      <p class="hint">A demo hand is loaded so you can try a note before you capture yours.</p>
+      <button class="btn ghost" type="button" id="welcome-dismiss">Skip for now</button>
+    </div>
+  </div>
+
+  <header class="topbar">
+    <a class="logo" href="https://buildbeyondbelief.com/" target="_blank" rel="noopener">
+      <svg class="logo-mark" viewBox="40 40 200 200" aria-hidden="true">
+        <defs>
+          <linearGradient id="nav-g1" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#6366f1"/><stop offset="100%" stop-color="#06b6d4"/></linearGradient>
+          <linearGradient id="nav-g2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#818cf8"/><stop offset="100%" stop-color="#22d3ee"/></linearGradient>
+          <linearGradient id="nav-g3" x1="100%" y1="100%" x2="0%" y2="0%"><stop offset="0%" stop-color="#6366f1"/><stop offset="50%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#06b6d4"/></linearGradient>
+        </defs>
+        <g transform="translate(150,140) rotate(-55,-10,0) scale(2)" opacity="0.75"><path d="M-16,-28 L-16,28 L12,14 L-4,0 L12,-14 Z" stroke="url(#nav-g1)" stroke-width="2.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/></g>
+        <g transform="translate(150,140) rotate(-27,-10,0) scale(2)" opacity="0.85"><path d="M-16,-28 L-16,28 L12,14 L-4,0 L12,-14 Z" stroke="url(#nav-g2)" stroke-width="3" fill="none" stroke-linejoin="round" stroke-linecap="round"/></g>
+        <g transform="translate(150,140) rotate(1,-10,0) scale(2)" opacity="1"><path d="M-16,-28 L-16,28 L12,14 L-4,0 L12,-14 Z" stroke="url(#nav-g3)" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/></g>
+      </svg>
+      <span class="logo-text">My Handwriting</span>
+    </a>
+    <nav class="step-nav" aria-label="Studio steps">
+      <button class="nav-btn" data-panel="capture" aria-current="page">1. Write</button>
+      <button class="nav-btn" data-panel="stamps">2. Stamps</button>
+      <button class="nav-btn" data-panel="compose">3. Note</button>
+      <button class="nav-btn" data-panel="machine">4. Printer</button>
+    </nav>
+    <a class="topbar-cta" href="https://buildbeyondbelief.com/" target="_blank" rel="noopener">Build Beyond Belief</a>
+  </header>
+
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <h1>My Handwriting</h1>
-        <p>Capture your strokes. Type a note. Export G-code for a pen on the printer.</p>
+        <p class="side-label">Studio</p>
+        <p>Capture strokes. Plant stamps. Export G-code for a pen on the printer.</p>
       </div>
-      <nav>
-        <button class="nav-btn" data-panel="capture" aria-current="page">1. Capture</button>
-        <button class="nav-btn" data-panel="stamps">2. Stamps</button>
-        <button class="nav-btn" data-panel="compose">3. Compose</button>
-        <button class="nav-btn" data-panel="machine">4. Printer</button>
-      </nav>
       <div class="side-actions">
         <button class="btn" id="export-project">Download backup</button>
         <button class="btn secondary" id="import-project">Restore backup</button>
@@ -26,16 +81,19 @@
         <button class="btn danger" id="reset-all">Reset all</button>
         <input id="import-file" type="file" accept="application/json,.json" hidden />
         <p class="hint" id="save-status">Saving in this browser…</p>
-        <p class="hint">Auto-saves letters, stamps, the note, stamps on the page, and printer settings. Download a backup before clearing Safari data or switching devices.</p>
+        <p class="hint">Letters, stamps, the note, and printer settings stay on this device. Download a backup before clearing Safari data.</p>
       </div>
     </aside>
 
     <main class="main">
       <section class="panel active" id="panel-capture">
-        <h2>Capture your hand</h2>
+        <h2>Write</h2>
         <p class="lede">
-          A 3D printer needs <em>ordered pen strokes</em>, not a picture of letters.
-          Write each character here (stylus is best), or load a scan of your samples and trace over it so the path matches how you actually write.
+          A printer needs <em>ordered pen strokes</em>, not a picture of letters.
+          Stylus is best. Or load a scan and trace so the path matches how you actually write.
+        </p>
+        <p class="demo-banner" id="demo-banner-capture" hidden>
+          Demo letters are filling gaps so you can try a note. Capture your own hand here — three to five of each letter you use.
         </p>
 
         <div class="row">
@@ -85,10 +143,10 @@
             <canvas id="capture-canvas" width="1400" height="700"></canvas>
           </div>
           <div class="guide-legend">
-            <span><i class="swatch" style="background:#8b3a32"></i>cap height</span>
-            <span><i class="swatch" style="background:#3f6b58"></i>x-height</span>
+            <span><i class="swatch" style="background:#6366f1"></i>cap height</span>
+            <span><i class="swatch" style="background:#06b6d4"></i>x-height</span>
             <span><i class="swatch" style="background:#1c1712"></i>baseline</span>
-            <span><i class="swatch" style="background:#6b5a8c"></i>descender</span>
+            <span><i class="swatch" style="background:#a78bfa"></i>descender</span>
             <span>Write on the lines. Left gray tick is the origin.</span>
           </div>
         </div>
@@ -106,7 +164,7 @@
         <h2>Stamps</h2>
         <p class="lede">
           Draw a doodle, trace a scan, or turn a photo into shaded pen work.
-          Shade modes keep an even line weight. Wander is one continuous line that packs tighter in the darks; rings / hatch / squiggle are families of traces.
+          Shade modes keep an even line weight. Wander is one continuous line; rings, hatch, and squiggle are families of traces.
         </p>
         <div class="row">
           <div class="stack">
@@ -148,26 +206,6 @@
             <label for="trace-threshold" id="trace-threshold-label"><span id="trace-threshold-name">Ink threshold</span> (<span id="trace-threshold-val">145</span>)</label>
             <input id="trace-threshold" type="range" min="20" max="250" value="145" />
           </div>
-          <div class="stack stamp-photo-only stamp-binary-only">
-            <label for="trace-join">Join gaps (<span id="trace-join-val">1</span>)</label>
-            <input id="trace-join" type="range" min="0" max="8" value="1" />
-          </div>
-          <div class="stack stamp-photo-only stamp-binary-only">
-            <label for="trace-thicken">Thicken marks (<span id="trace-thicken-val">0</span>)</label>
-            <input id="trace-thicken" type="range" min="0" max="5" value="0" />
-          </div>
-          <div class="stack stamp-photo-only stamp-binary-only">
-            <label for="trace-specks">Drop specks (<span id="trace-specks-val">18</span>)</label>
-            <input id="trace-specks" type="range" min="1" max="120" value="18" />
-          </div>
-          <div class="stack stamp-photo-only stamp-binary-only">
-            <label for="trace-smooth">Smooth paths (<span id="trace-smooth-val">8</span>)</label>
-            <input id="trace-smooth" type="range" min="1" max="20" value="8" />
-          </div>
-          <div class="stack stamp-photo-only stamp-scribble-only" hidden>
-            <label for="trace-scribble">Scribble spacing (<span id="trace-scribble-val">5</span>)</label>
-            <input id="trace-scribble" type="range" min="2" max="20" value="5" />
-          </div>
           <div class="stack stamp-photo-only stamp-shade-only" hidden>
             <label for="trace-density">Shade density (<span id="trace-density-val">12</span>)</label>
             <input id="trace-density" type="range" min="1" max="24" value="12" />
@@ -177,6 +215,31 @@
             <input id="trace-shades" type="range" min="2" max="100" value="32" />
           </div>
         </div>
+        <details class="more-box stamp-photo-only stamp-binary-only">
+          <summary>More trace options</summary>
+          <div class="row">
+            <div class="stack">
+              <label for="trace-join">Join gaps (<span id="trace-join-val">1</span>)</label>
+              <input id="trace-join" type="range" min="0" max="8" value="1" />
+            </div>
+            <div class="stack">
+              <label for="trace-thicken">Thicken marks (<span id="trace-thicken-val">0</span>)</label>
+              <input id="trace-thicken" type="range" min="0" max="5" value="0" />
+            </div>
+            <div class="stack">
+              <label for="trace-specks">Drop specks (<span id="trace-specks-val">18</span>)</label>
+              <input id="trace-specks" type="range" min="1" max="120" value="18" />
+            </div>
+            <div class="stack">
+              <label for="trace-smooth">Smooth paths (<span id="trace-smooth-val">8</span>)</label>
+              <input id="trace-smooth" type="range" min="1" max="20" value="8" />
+            </div>
+            <div class="stack stamp-scribble-only" hidden>
+              <label for="trace-scribble">Scribble spacing (<span id="trace-scribble-val">5</span>)</label>
+              <input id="trace-scribble" type="range" min="2" max="20" value="5" />
+            </div>
+          </div>
+        </details>
         <div class="row" style="margin-top:10px;">
           <label class="hint stamp-photo-only"><input type="checkbox" id="trace-invert" /> Invert (white ink on dark paper)</label>
           <div class="stack">
@@ -195,41 +258,47 @@
         </div>
         <p class="status" id="stamp-status">Load a photo of a drawing on plain paper. Darker marks become paths.</p>
         <h3 style="margin:22px 0 8px;">Stamp box</h3>
-        <p class="hint">Click a stamp to select it, then place copies on Compose. Click again to delete.</p>
+        <p class="hint">Click a stamp to select it, then place copies on Note. Click again to delete.</p>
         <div class="variant-list" id="stamp-list"></div>
       </section>
 
       <section class="panel" id="panel-compose">
-        <h2>Compose a note</h2>
-        <p class="lede">Type what you want written. Missing letters are skipped and listed below. Common words you captured as wholes will be used instead of spelling them letter by letter.</p>
+        <h2>Note</h2>
+        <p class="lede">Type what you want written. Missing letters are skipped and listed below. Whole words you captured are used instead of spelling them letter by letter.</p>
+        <p class="demo-banner" id="demo-banner-compose" hidden>
+          This note is using a demo hand. Capture yours in Write if you want it to look like you.
+        </p>
         <textarea id="note-text" placeholder="Write the note here…"></textarea>
-        <div class="row" style="margin-top:12px;">
-          <div class="stack">
-            <label for="x-height">x-height (mm)</label>
-            <input id="x-height" type="number" step="0.1" value="3.2" />
+        <details class="more-box">
+          <summary>Type settings</summary>
+          <div class="row">
+            <div class="stack">
+              <label for="x-height">x-height (mm)</label>
+              <input id="x-height" type="number" step="0.1" value="3.2" />
+            </div>
+            <div class="stack">
+              <label for="line-height">Line height (× x-height)</label>
+              <input id="line-height" type="number" step="0.1" value="2.6" />
+            </div>
+            <div class="stack">
+              <label for="tracking">Letter gap (× x-height)</label>
+              <input id="tracking" type="number" step="0.02" value="0.14" />
+            </div>
+            <div class="stack">
+              <label for="word-space">Word gap (× x-height)</label>
+              <input id="word-space" type="number" step="0.02" value="0.42" />
+            </div>
+            <div class="stack">
+              <label for="seed">Variation seed</label>
+              <input id="seed" type="number" value="7" />
+            </div>
+            <div class="stack">
+              <label for="jitter">Human jitter</label>
+              <input id="jitter" type="range" min="0" max="100" value="55" />
+            </div>
           </div>
-          <div class="stack">
-            <label for="line-height">Line height (× x-height)</label>
-            <input id="line-height" type="number" step="0.1" value="2.6" />
-          </div>
-          <div class="stack">
-            <label for="tracking">Letter gap (× x-height)</label>
-            <input id="tracking" type="number" step="0.02" value="0.14" />
-          </div>
-          <div class="stack">
-            <label for="word-space">Word gap (× x-height)</label>
-            <input id="word-space" type="number" step="0.02" value="0.42" />
-          </div>
-          <div class="stack">
-            <label for="seed">Variation seed</label>
-            <input id="seed" type="number" value="7" />
-          </div>
-          <div class="stack">
-            <label for="jitter">Human jitter</label>
-            <input id="jitter" type="range" min="0" max="100" value="55" />
-          </div>
-        </div>
-        <p class="hint" style="margin:8px 0 0;">Letter gap is the ink-to-ink space inside a word. Word gap is extra space on a space character, <em>on top of</em> letter gap, so spreading letters does not swallow the spaces. Pairs like AV, To, and WA still slide together from the stroke outlines.</p>
+          <p class="hint" style="margin:10px 0 0;">Letter gap is ink-to-ink inside a word. Word gap is extra space on a space character, on top of letter gap. Pairs like AV still slide together from the stroke outlines.</p>
+        </details>
         <div class="toolbar" style="margin-top:14px;">
           <button class="btn" id="export-gcode">Download G-code</button>
           <button class="btn secondary" id="export-dry">Dry-run G-code (pen up)</button>
@@ -253,7 +322,7 @@
               </div>
             </div>
           </div>
-          <p class="hint" style="margin:10px 0 0;">Select a stamp below, then click the page to plant one. Drag to move. Fun run lays a wiggly row of copies across the lower third — like the same doodle jogging across the paper.</p>
+          <p class="hint" style="margin:10px 0 0;">Select a stamp, then click the page to plant one. Drag to move. Fun run lays a wiggly row across the lower third.</p>
           <div class="variant-list" id="compose-stamp-list"></div>
         </div>
         <p class="missing" id="missing-list"></p>
@@ -275,7 +344,7 @@
 
       <section class="panel" id="panel-machine">
         <h2>Printer &amp; pen</h2>
-        <p class="lede">Mount a pen in the toolhead, tape paper to the bed, and set Z so the nib just kisses the page. Home X/Y only. Watch the first run.</p>
+        <p class="lede">Mount a pen in the toolhead, tape paper to the bed, and set Z so the nib just kisses the page. Home X/Y only. Watch the first run. Custom G-code can crash a pen into the bed if Z is wrong.</p>
         <div class="card" style="margin-bottom:16px;">
           <div class="machine-grid">
             <div class="stack">
@@ -363,6 +432,16 @@
       </section>
     </main>
   </div>
+
+  <footer class="site-footer">
+    <div class="site-footer-inner">
+      <p>
+        My Handwriting is a <a href="https://buildbeyondbelief.com/" target="_blank" rel="noopener">Build Beyond Belief</a> studio tool.
+        No account. Nothing is uploaded. <a href="https://github.com/yoans/my-handwriting" target="_blank" rel="noopener">Source on GitHub</a>.
+      </p>
+      <p>Watch the first plot. A pen below the nozzle will hit the bed if Z is wrong.</p>
+    </div>
+  </footer>
   <script type="module" src="js/app.js"></script>
 </body>
 </html>

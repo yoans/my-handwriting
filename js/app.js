@@ -12,6 +12,7 @@ import {
   loadProject, persistProject, projectToJson, parseIncomingFile,
   mergeLibraries, backupFilename, wipeStoredProject, emptyProject,
 } from "./persist.js";
+import { mergeDemoKit, libraryUsesDemo } from "./demo.js";
 
 const CHARSET = [
   ..."abcdefghijklmnopqrstuvwxyz",
@@ -101,7 +102,7 @@ function collectProject() {
 }
 
 function applyProject(project) {
-  library = project.library;
+  library = mergeDemoKit(project.library || {});
   placements = project.placements || [];
   machine = { ...DEFAULT_MACHINE, ...project.machine };
   selectedStampId = project.selectedStampId || library.stamps[0]?.id || null;
@@ -109,6 +110,9 @@ function applyProject(project) {
   strokes = Array.isArray(project.capture?.strokes) ? project.capture.strokes : [];
 
   $("note-text").value = project.compose?.text ?? "";
+  if (libraryUsesDemo(library) && !$("note-text").value.trim()) {
+    $("note-text").value = "Hi there";
+  }
   $("x-height").value = project.compose?.xHeight ?? 3.2;
   $("line-height").value = project.compose?.lineHeight ?? 2.6;
   $("tracking").value = project.compose?.tracking ?? 0.14;
@@ -147,6 +151,44 @@ function applyProject(project) {
   drawCapture();
   drawStampPreview();
   drawCompose();
+  syncDemoBanners();
+}
+
+function syncDemoBanners() {
+  const on = libraryUsesDemo(library);
+  ["demo-banner-capture", "demo-banner-compose"].forEach((id) => {
+    const el = $(id);
+    if (el) el.hidden = !on;
+  });
+}
+
+function goToPanel(name) {
+  document.querySelectorAll(".nav-btn").forEach((b) => {
+    if (b.dataset.panel === name) b.setAttribute("aria-current", "page");
+    else b.removeAttribute("aria-current");
+  });
+  document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === `panel-${name}`));
+  if (name === "compose") drawCompose();
+  if (name === "stamps") drawStampPreview();
+}
+
+const WELCOME_KEY = "my-handwriting-welcome-v1";
+
+function initWelcome() {
+  const modal = $("welcome");
+  if (!modal) return;
+  if (!localStorage.getItem(WELCOME_KEY)) modal.hidden = false;
+  modal.querySelectorAll("[data-start]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      localStorage.setItem(WELCOME_KEY, "1");
+      modal.hidden = true;
+      goToPanel(btn.dataset.start);
+    });
+  });
+  $("welcome-dismiss")?.addEventListener("click", () => {
+    localStorage.setItem(WELCOME_KEY, "1");
+    modal.hidden = true;
+  });
 }
 
 function updateSaveStatus(result) {
@@ -154,7 +196,7 @@ function updateSaveStatus(result) {
   if (!el) return;
   if (!result.localStorageOk && !result.indexedDbOk) {
     el.textContent = "Could not save in this browser — download a backup now.";
-    el.style.color = "#f2b8b5";
+    el.style.color = "#fda4af";
     return;
   }
   const when = new Date(result.project.savedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
@@ -238,10 +280,10 @@ function drawCapture() {
 
   ctx.lineWidth = 1;
   const lines = [
-    [g.cap, "#8b3a32", "cap"],
-    [g.xHeight, "#3f6b58", "x-height"],
+    [g.cap, "#6366f1", "cap"],
+    [g.xHeight, "#06b6d4", "x-height"],
     [g.baseline, "#1c1712", "baseline"],
-    [g.descender, "#6b5a8c", "descender"],
+    [g.descender, "#a78bfa", "descender"],
   ];
   for (const [y, color, label] of lines) {
     ctx.strokeStyle = color;
@@ -252,7 +294,7 @@ function drawCapture() {
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = color;
-    ctx.font = "18px Georgia, serif";
+    ctx.font = "18px 'Space Grotesk', sans-serif";
     ctx.fillText(label, 16, y - 8);
   }
 
@@ -620,6 +662,7 @@ function saveCapture() {
   drawCapture();
   drawCompose();
   setStatus("Saved. Capture another variant — three to five per letter looks far more human.");
+  syncDemoBanners();
   autosave(true);
 }
 
@@ -729,7 +772,7 @@ function drawDoodlePreview() {
   const ink = doodleInk();
   if (!ink.length) {
     ctx.fillStyle = "#4a4036";
-    ctx.font = "28px Georgia, serif";
+    ctx.font = "28px 'Space Grotesk', sans-serif";
     ctx.fillText("Draw a doodle here.", 48, canvas.height / 2);
   }
   ctx.strokeStyle = "#1c1712";
@@ -756,7 +799,7 @@ function drawStampPreview() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   if (!stampImage) {
     ctx.fillStyle = "#4a4036";
-    ctx.font = "28px Georgia, serif";
+    ctx.font = "28px 'Space Grotesk', sans-serif";
     ctx.fillText("Drop a photo of a drawing here.", 48, canvas.height / 2);
     return;
   }
@@ -811,7 +854,7 @@ function drawStampPreview() {
     ctx.stroke();
   }
   ctx.fillStyle = "#4a4036";
-  ctx.font = "16px Georgia, serif";
+  ctx.font = "16px 'Space Grotesk', sans-serif";
   ctx.fillText(previewKind === "gray" ? "grayscale" : "ink mask", 24, 28);
   ctx.fillText("pen paths", split + 20, 28);
 }
@@ -1016,7 +1059,8 @@ function saveStamp() {
   library = loadLibrary();
   selectedStampId = stamp.id;
   renderStampLists();
-  $("stamp-status").textContent = `Saved “${stamp.name}”. Open Compose, then click the page or Fun run.`;
+  $("stamp-status").textContent = `Saved “${stamp.name}”. Open Note, then click the page or Fun run.`;
+  syncDemoBanners();
   autosave(true);
 }
 
@@ -1164,19 +1208,13 @@ function exportNote(dryRun) {
 
 function initNav() {
   document.querySelectorAll(".nav-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".nav-btn").forEach((b) => b.removeAttribute("aria-current"));
-      btn.setAttribute("aria-current", "page");
-      document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
-      $(`panel-${btn.dataset.panel}`).classList.add("active");
-      if (btn.dataset.panel === "compose") drawCompose();
-      if (btn.dataset.panel === "stamps") drawStampPreview();
-    });
+    btn.addEventListener("click", () => goToPanel(btn.dataset.panel));
   });
 }
 
 function init() {
   initNav();
+  initWelcome();
   wireCapture();
   wireStampCanvas();
   wireComposeCanvas();
@@ -1186,6 +1224,7 @@ function init() {
     autosave(true);
   }).catch((err) => {
     console.warn(err);
+    library = mergeDemoKit(library);
     fillMachineForm();
     syncStampSource();
     renderGrid();
@@ -1194,6 +1233,7 @@ function init() {
     drawCapture();
     drawStampPreview();
     drawCompose();
+    syncDemoBanners();
   });
 
   $("capture-mode").addEventListener("change", () => { syncMode(); autosave(); });
