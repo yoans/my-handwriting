@@ -4,7 +4,7 @@ Turn samples of **your** writing into G-code a 3D printer can follow with a pen 
 
 **Live:** https://yoans.github.io/my-handwriting/
 
-A [Build Beyond Belief](https://buildbeyondbelief.com/) studio tool. Everything runs in the browser. Letters, stamps, the note, and printer settings auto-save on this device. **Download backup** writes a JSON file you can Restore on another phone or after clearing Safari.
+A [Build Beyond Belief](https://buildbeyondbelief.com/) studio tool. Everything runs in the browser. Letters, stamps, the note, and printer settings auto-save on this device. **Download backup** writes a JSON file you can Restore on another computer or after clearing this site’s data.
 
 ## Why this approach
 

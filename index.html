@@ -4,20 +4,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>My Handwriting — plot your own hand</title>
-  <meta name="description" content="Capture your handwriting, turn photos into pen shading, and export G-code for a pen in a 3D-printer toolhead. Runs in the browser." />
+  <meta name="description" content="Record your handwriting in the browser, turn photos into pen drawings, and download a print file for a 3D printer that is holding a pen." />
   <meta name="theme-color" content="#0a0a0f" />
   <link rel="canonical" href="https://yoans.github.io/my-handwriting/" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://yoans.github.io/my-handwriting/" />
   <meta property="og:title" content="My Handwriting — plot your own hand" />
-  <meta property="og:description" content="Capture ordered strokes, shade a photo with a pen path, export G-code. Your hand, not a font. Runs in the browser." />
+  <meta property="og:description" content="Record your handwriting, turn a photo into pen lines, download a print file. Your hand, not a font. Stays in this browser." />
   <meta property="og:image" content="https://yoans.github.io/my-handwriting/og-image.jpg" />
   <meta property="og:image:width" content="1280" />
   <meta property="og:image:height" content="720" />
   <meta property="og:image:alt" content="A 3D printer plotting a handwritten note on paper" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="My Handwriting — plot your own hand" />
-  <meta name="twitter:description" content="Capture ordered strokes, shade a photo with a pen path, export G-code. Runs in the browser." />
+  <meta name="twitter:description" content="Record your handwriting, turn a photo into pen lines, download a print file. Stays in this browser." />
   <meta name="twitter:image" content="https://yoans.github.io/my-handwriting/og-image.jpg" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="apple-touch-icon" href="og-image.jpg" />
@@ -32,15 +32,16 @@
       <p class="section-label">Build Beyond Belief</p>
       <h2>Plot <span class="gradient-text">your</span> hand.</h2>
       <p>
-        A 3D printer with a pen needs ordered strokes, not a font. Capture your letters,
-        turn a photo into shaded pen work, and export G-code. Nothing leaves this browser.
+        Clip a pen on a 3D printer and it can write like a plotter. This site records
+        <em>your</em> strokes — not a font — then downloads a print file the machine can follow.
+        Nothing is uploaded. It all stays in this browser.
       </p>
       <div class="welcome-actions">
-        <button class="btn" type="button" data-start="capture">Write a letter</button>
-        <button class="btn secondary" type="button" data-start="stamps">Turn a photo into a stamp</button>
-        <button class="btn ghost" type="button" data-start="machine">Set up the A1</button>
+        <button class="btn" type="button" data-start="capture">Write my letters</button>
+        <button class="btn secondary" type="button" data-start="stamps">Make a picture stamp</button>
+        <button class="btn ghost" type="button" data-start="machine">Set up the printer</button>
       </div>
-      <p class="hint">A demo hand is loaded so you can try a note before you capture yours.</p>
+      <p class="hint">A sample handwriting is already loaded so you can type a note before you draw your own letters.</p>
       <button class="btn ghost" type="button" id="welcome-dismiss">Skip for now</button>
     </div>
   </div>
@@ -72,16 +73,16 @@
     <aside class="sidebar">
       <div class="brand">
         <p class="side-label">Studio</p>
-        <p>Capture strokes. Plant stamps. Export G-code for a pen on the printer.</p>
+        <p>Four steps: save how you write, optionally add a picture, type a note, then download a file for a 3D printer that is holding a pen.</p>
       </div>
       <div class="side-actions">
-        <button class="btn" id="export-project">Download backup</button>
-        <button class="btn secondary" id="import-project">Restore backup</button>
-        <button class="btn ghost" id="merge-project">Merge backup</button>
-        <button class="btn danger" id="reset-all">Reset all</button>
+        <button class="btn" id="export-project">Download a backup of my work</button>
+        <button class="btn secondary" id="import-project">Restore from a backup file</button>
+        <button class="btn ghost" id="merge-project">Add a backup without replacing my note</button>
+        <button class="btn danger" id="reset-all">Erase everything in this browser</button>
         <input id="import-file" type="file" accept="application/json,.json" hidden />
         <p class="hint" id="save-status">Saving in this browser…</p>
-        <p class="hint">Letters, stamps, the note, and printer settings stay on this device. Download a backup before clearing Safari data.</p>
+        <p class="hint">Your letters, pictures, note, and printer settings stay in this browser on this device. Download a backup before you clear site data or switch computers.</p>
       </div>
     </aside>
 
@@ -89,20 +90,29 @@
       <section class="panel active" id="panel-capture">
         <h2>Write</h2>
         <p class="lede">
-          A printer needs <em>ordered pen strokes</em>, not a picture of letters.
-          Stylus is best. Or load a scan and trace so the path matches how you actually write.
+          The printer can only replay paths you draw here — it cannot guess from a photo of letters.
+          Draw each character the way you write it (a tablet pen is nicest; a mouse works). Save a few versions of the letters you actually use.
         </p>
+        <div class="card how-card">
+          <p class="side-label">The four steps</p>
+          <ol>
+            <li><strong>Write</strong> — record your letters. The printer copies these paths, in order.</li>
+            <li><strong>Stamps</strong> — optional. Turn a drawing or photo into a small picture the pen can draw on the page.</li>
+            <li><strong>Note</strong> — type a message. Download a print file for the machine, or a picture to preview.</li>
+            <li><strong>Printer</strong> — pick your 3D printer, clip a pen on it, run a practice pass with the pen in the air first.</li>
+          </ol>
+        </div>
         <p class="demo-banner" id="demo-banner-capture" hidden>
-          Demo letters are filling gaps so you can try a note. Capture your own hand here — three to five of each letter you use.
+          Sample letters are filling in so you can try a note right away. Draw your own hand here — a few of each letter you use will look more like you.
         </p>
 
         <div class="row">
           <div class="stack">
-            <label for="capture-mode">Mode</label>
+            <label for="capture-mode">What are you saving?</label>
             <select id="capture-mode">
-              <option value="glyph">Letter / mark</option>
-              <option value="word">Whole word</option>
-              <option value="page">Full page / existing note</option>
+              <option value="glyph">One letter or mark</option>
+              <option value="word">A whole word (like “the”)</option>
+              <option value="page">A full page I already wrote</option>
             </select>
           </div>
           <div class="stack" id="glyph-target-wrap">
@@ -118,22 +128,22 @@
             <div class="toolbar">
               <button class="btn ghost" id="undo-stroke">Undo stroke</button>
               <button class="btn ghost" id="clear-strokes">Clear</button>
-              <button class="btn" id="save-capture">Save into library</button>
+              <button class="btn" id="save-capture">Save this letter</button>
             </div>
           </div>
         </div>
 
         <div class="row" style="margin-top:12px;">
           <div class="stack">
-            <label>Scan overlay</label>
+            <label>Trace a photo of your writing</label>
             <div class="toolbar">
-              <button class="btn secondary" id="load-overlay">Load photo / scan</button>
+              <button class="btn secondary" id="load-overlay">Load photo</button>
               <input id="overlay-file" type="file" accept="image/*" hidden />
               <button class="btn ghost" id="clear-overlay">Remove overlay</button>
             </div>
           </div>
           <div class="stack">
-            <label for="overlay-opacity">Overlay ink</label>
+            <label for="overlay-opacity">Photo fade</label>
             <input id="overlay-opacity" type="range" min="0" max="100" value="35" />
           </div>
         </div>
@@ -143,28 +153,28 @@
             <canvas id="capture-canvas" width="1400" height="700"></canvas>
           </div>
           <div class="guide-legend">
-            <span><i class="swatch" style="background:#6366f1"></i>cap height</span>
-            <span><i class="swatch" style="background:#06b6d4"></i>x-height</span>
-            <span><i class="swatch" style="background:#1c1712"></i>baseline</span>
-            <span><i class="swatch" style="background:#a78bfa"></i>descender</span>
-            <span>Write on the lines. Left gray tick is the origin.</span>
+            <span><i class="swatch" style="background:#6366f1"></i>tall letters (H, b)</span>
+            <span><i class="swatch" style="background:#06b6d4"></i>small letters (a, x)</span>
+            <span><i class="swatch" style="background:#1c1712"></i>baseline (sit the letters here)</span>
+            <span><i class="swatch" style="background:#a78bfa"></i>tails below the line (g, y)</span>
+            <span>Handwriting guides, like lined paper. Write between them. The gray tick on the left is the start of the letter.</span>
           </div>
         </div>
         <p class="status" id="capture-status"></p>
 
-        <h3 style="margin:22px 0 8px;">Alphabet</h3>
-        <p class="hint">Green cells have at least two variants. Capture 3–5 of each letter you use, plus a few common words.</p>
+        <h3 style="margin:22px 0 8px;">Your alphabet</h3>
+        <p class="hint">Tap a character, draw it above, then save. A colored cell means you already saved that letter — two or more versions (green) look more natural when the note mixes them.</p>
         <div class="glyph-grid" id="glyph-grid"></div>
 
-        <h3 style="margin:22px 0 8px;">Saved variants</h3>
+        <h3 style="margin:22px 0 8px;">Saved versions of this character</h3>
         <div class="variant-list" id="variant-list"></div>
       </section>
 
       <section class="panel" id="panel-stamps">
         <h2>Stamps</h2>
         <p class="lede">
-          Draw a doodle, trace a scan, or turn a photo into shaded pen work.
-          Shade modes keep an even line weight. Wander is one continuous line; rings, hatch, and squiggle are families of traces.
+          A stamp is a little picture the pen can draw next to your note — a kid’s doodle, a logo, a shaded photo.
+          Load a photo and pick how to turn it into pen lines, or draw one here. Save it, then plant copies on the Note page.
         </p>
         <div class="row">
           <div class="stack">
@@ -191,15 +201,15 @@
             </div>
           </div>
           <div class="stack stamp-photo-only">
-            <label for="trace-mode">Trace</label>
+            <label for="trace-mode">How to turn the photo into pen lines</label>
             <select id="trace-mode">
-              <option value="outline">Outline (crayon / marker)</option>
-              <option value="centerline">Centerline (thin pen)</option>
-              <option value="scribble">Outline + scribble fill</option>
-              <option value="spiral">Wander shade (one line)</option>
-              <option value="hatch">Hatch shade (spacing)</option>
-              <option value="squiggle">Squiggle shade (spacing)</option>
-              <option value="rings">Ring shade (spacing)</option>
+              <option value="outline">Outline — follow the edges (crayon / marker)</option>
+              <option value="centerline">Centerline — a thin line down the middle</option>
+              <option value="scribble">Outline plus scribble fill</option>
+              <option value="spiral">Wander — one line that packs tighter in dark areas</option>
+              <option value="hatch">Hatch — parallel lines, closer in darks</option>
+              <option value="squiggle">Squiggle — wavy rows, closer in darks</option>
+              <option value="rings">Rings — nested circles, closer in darks</option>
             </select>
           </div>
           <div class="stack stamp-photo-only">
@@ -207,19 +217,20 @@
             <input id="trace-threshold" type="range" min="20" max="250" value="145" />
           </div>
           <div class="stack stamp-photo-only stamp-shade-only" hidden>
-            <label for="trace-density">Shade density (<span id="trace-density-val">12</span>)</label>
+            <label for="trace-density">Line packing (<span id="trace-density-val">12</span>)</label>
             <input id="trace-density" type="range" min="1" max="24" value="12" />
           </div>
           <div class="stack stamp-photo-only stamp-shade-only" hidden>
-            <label for="trace-shades">Shades (<span id="trace-shades-val">32</span>)</label>
+            <label for="trace-shades">Gray steps (<span id="trace-shades-val">32</span>)</label>
             <input id="trace-shades" type="range" min="2" max="100" value="32" />
           </div>
         </div>
         <details class="more-box stamp-photo-only stamp-binary-only">
-          <summary>More trace options</summary>
+          <summary>Fine-tune the trace</summary>
+          <p class="hint" style="margin:8px 0 0;">Use these if the preview is too broken, too speckled, or too jagged.</p>
           <div class="row">
             <div class="stack">
-              <label for="trace-join">Join gaps (<span id="trace-join-val">1</span>)</label>
+              <label for="trace-join">Connect broken lines (<span id="trace-join-val">1</span>)</label>
               <input id="trace-join" type="range" min="0" max="8" value="1" />
             </div>
             <div class="stack">
@@ -227,7 +238,7 @@
               <input id="trace-thicken" type="range" min="0" max="5" value="0" />
             </div>
             <div class="stack">
-              <label for="trace-specks">Drop specks (<span id="trace-specks-val">18</span>)</label>
+              <label for="trace-specks">Ignore tiny dots (<span id="trace-specks-val">18</span>)</label>
               <input id="trace-specks" type="range" min="1" max="120" value="18" />
             </div>
             <div class="stack">
@@ -241,7 +252,7 @@
           </div>
         </details>
         <div class="row" style="margin-top:10px;">
-          <label class="hint stamp-photo-only"><input type="checkbox" id="trace-invert" /> Invert (white ink on dark paper)</label>
+          <label class="hint stamp-photo-only"><input type="checkbox" id="trace-invert" /> Invert (treat light as ink, for a dark photo)</label>
           <div class="stack">
             <label for="stamp-name">Stamp name</label>
             <input id="stamp-name" type="text" value="doodle" />
@@ -256,54 +267,58 @@
             <canvas id="stamp-canvas" width="1400" height="700"></canvas>
           </div>
         </div>
-        <p class="status" id="stamp-status">Load a photo of a drawing on plain paper. Darker marks become paths.</p>
-        <h3 style="margin:22px 0 8px;">Stamp box</h3>
-        <p class="hint">Click a stamp to select it, then place copies on Note. Click again to delete.</p>
+        <p class="status" id="stamp-status">Load a photo of a drawing on plain paper. Dark marks become pen paths.</p>
+        <h3 style="margin:22px 0 8px;">Saved stamps</h3>
+        <p class="hint">Click a stamp to select it, then open Note and click the page to place a copy. Click the same stamp again to delete it.</p>
         <div class="variant-list" id="stamp-list"></div>
       </section>
 
       <section class="panel" id="panel-compose">
         <h2>Note</h2>
-        <p class="lede">Type what you want written. Missing letters are skipped and listed below. Whole words you captured are used instead of spelling them letter by letter.</p>
-        <p class="demo-banner" id="demo-banner-compose" hidden>
-          This note is using a demo hand. Capture yours in Write if you want it to look like you.
+        <p class="lede">
+          Type the message you want the pen to write. Letters you have not saved yet are skipped and listed below.
+          If you saved a whole word like “the”, that drawing is used instead of spelling it letter by letter.
         </p>
-        <textarea id="note-text" placeholder="Write the note here…"></textarea>
+        <p class="demo-banner" id="demo-banner-compose" hidden>
+          This preview is using sample handwriting. Draw your own letters under Write if you want it to look like you.
+        </p>
+        <textarea id="note-text" placeholder="Type a short note…"></textarea>
         <details class="more-box">
-          <summary>Type settings</summary>
+          <summary>Size, spacing, and how messy it looks</summary>
           <div class="row">
             <div class="stack">
-              <label for="x-height">x-height (mm)</label>
+              <label for="x-height">Letter height (mm)</label>
               <input id="x-height" type="number" step="0.1" value="3.2" />
             </div>
             <div class="stack">
-              <label for="line-height">Line height (× x-height)</label>
+              <label for="line-height">Space between lines</label>
               <input id="line-height" type="number" step="0.1" value="2.6" />
             </div>
             <div class="stack">
-              <label for="tracking">Letter gap (× x-height)</label>
+              <label for="tracking">Gap between letters</label>
               <input id="tracking" type="number" step="0.02" value="0.14" />
             </div>
             <div class="stack">
-              <label for="word-space">Word gap (× x-height)</label>
+              <label for="word-space">Extra gap for a space</label>
               <input id="word-space" type="number" step="0.02" value="0.42" />
             </div>
             <div class="stack">
-              <label for="seed">Variation seed</label>
+              <label for="seed">Random mix (seed)</label>
               <input id="seed" type="number" value="7" />
             </div>
             <div class="stack">
-              <label for="jitter">Human jitter</label>
+              <label for="jitter">Human wobble</label>
               <input id="jitter" type="range" min="0" max="100" value="55" />
             </div>
           </div>
-          <p class="hint" style="margin:10px 0 0;">Letter gap is ink-to-ink inside a word. Word gap is extra space on a space character, on top of letter gap. Pairs like AV still slide together from the stroke outlines.</p>
+          <p class="hint" style="margin:10px 0 0;">Letter height is the size of a lowercase letter like “x”. Line spacing is a multiple of that. Wobble mixes your saved versions so it does not look like a font.</p>
         </details>
         <div class="toolbar" style="margin-top:14px;">
-          <button class="btn" id="export-gcode">Download G-code</button>
-          <button class="btn secondary" id="export-dry">Dry-run G-code (pen up)</button>
-          <button class="btn secondary" id="export-svg">Download SVG</button>
+          <button class="btn" id="export-gcode">Download print file</button>
+          <button class="btn secondary" id="export-dry">Practice file (pen in the air)</button>
+          <button class="btn secondary" id="export-svg">Download a picture preview</button>
         </div>
+        <p class="hint" style="margin:10px 0 0;">The print file tells the 3D printer where to move with the pen down. The practice file does the same path with the pen lifted so you can watch without marking paper. Copy the print file onto the printer’s card or send it the way you usually start a print.</p>
         <div class="card" style="margin-top:14px;">
           <div class="row">
             <div class="stack">
@@ -311,28 +326,28 @@
               <input id="stamp-size" type="number" step="1" value="28" />
             </div>
             <div class="stack">
-              <label for="fun-run-count">Fun-run copies</label>
+              <label for="fun-run-count">How many copies</label>
               <input id="fun-run-count" type="number" min="2" max="16" value="6" />
             </div>
             <div class="stack">
               <label>&nbsp;</label>
               <div class="toolbar">
-                <button class="btn" id="fun-run">Fun run (parade)</button>
+                <button class="btn" id="fun-run">Scatter copies across the page</button>
                 <button class="btn ghost" id="clear-stamps">Clear stamps on page</button>
               </div>
             </div>
           </div>
-          <p class="hint" style="margin:10px 0 0;">Select a stamp, then click the page to plant one. Drag to move. Fun run lays a wiggly row across the lower third.</p>
+          <p class="hint" style="margin:10px 0 0;">Select a saved stamp, then click the paper preview below to place it. Drag to move. Scatter copies drops a wiggly row of the same stamp across the lower part of the page.</p>
           <div class="variant-list" id="compose-stamp-list"></div>
         </div>
         <p class="missing" id="missing-list"></p>
         <div class="bounds-bar" id="bounds-bar" data-state="ok">
-          <p class="bounds-status" id="bounds-status">On the page and on the bed</p>
+          <p class="bounds-status" id="bounds-status">Fits on the paper and on the printer bed</p>
           <div class="toolbar">
-            <button class="btn" id="fit-page">Shrink to fit page</button>
-            <button class="btn secondary" id="nudge-stamps">Slide stamps onto page</button>
-            <button class="btn ghost" id="clamp-paper">Clamp page to bed</button>
-            <label class="hint"><input type="checkbox" id="auto-fix-export" checked /> Auto-fix on download</label>
+            <button class="btn" id="fit-page">Shrink writing to fit the paper</button>
+            <button class="btn secondary" id="nudge-stamps">Slide stamps onto the paper</button>
+            <button class="btn ghost" id="clamp-paper">Shrink the writable area to the bed</button>
+            <label class="hint"><input type="checkbox" id="auto-fix-export" checked /> Fix overflow when I download</label>
           </div>
         </div>
         <div class="paper-stage">
@@ -344,75 +359,83 @@
 
       <section class="panel" id="panel-machine">
         <h2>Printer &amp; pen</h2>
-        <p class="lede">Mount a pen in the toolhead, tape paper to the bed, and set Z so the nib just kisses the page. Home X/Y only. Watch the first run. Custom G-code can crash a pen into the bed if Z is wrong.</p>
+        <p class="lede">
+          You need a 3D printer — the kind that usually melts plastic — with a pen clipped where the nozzle sits, and paper taped to the bed.
+          This site does not talk to the printer by itself. You download a print file from the Note page, then start it the same way you would start a normal print (often a memory card).
+          Stay next to the first run. If the pen is too low it can scratch the bed.
+        </p>
+        <p class="hint" style="margin:-8px 0 16px;">
+          <strong>Bambu Lab A1</strong> is a popular small desktop 3D printer this app is tuned for. If that is your machine, pick it under Printer model. If you have something else (Prusa, Ender, and many others), pick the closest match. You do not need a Bambu printer to try the on-screen note.
+        </p>
         <div class="card" style="margin-bottom:16px;">
           <div class="machine-grid">
             <div class="stack">
-              <label for="preset">Preset</label>
+              <label for="preset">Printer model</label>
               <select id="preset"></select>
             </div>
             <div class="stack">
-              <label for="bed-x">Bed X (mm)</label>
+              <label for="bed-x">Printer bed width (mm)</label>
               <input id="bed-x" type="number" />
             </div>
             <div class="stack">
-              <label for="bed-y">Bed Y (mm)</label>
+              <label for="bed-y">Printer bed depth (mm)</label>
               <input id="bed-y" type="number" />
             </div>
             <div class="stack">
-              <label for="origin-x">Paper origin X</label>
+              <label for="origin-x">Paper left edge on the bed (mm)</label>
               <input id="origin-x" type="number" />
             </div>
             <div class="stack">
-              <label for="origin-y">Paper origin Y</label>
+              <label for="origin-y">Paper top edge on the bed (mm)</label>
               <input id="origin-y" type="number" />
             </div>
             <div class="stack">
-              <label for="paper-w">Writable width (mm)</label>
+              <label for="paper-w">Writable width on the paper (mm)</label>
               <input id="paper-w" type="number" />
             </div>
             <div class="stack">
-              <label for="paper-h">Writable height (mm)</label>
+              <label for="paper-h">Writable height on the paper (mm)</label>
               <input id="paper-h" type="number" />
             </div>
             <div class="stack">
-              <label for="z-up">Z up (travel)</label>
+              <label for="z-up">Pen height while moving (mm)</label>
               <input id="z-up" type="number" step="0.1" />
             </div>
             <div class="stack">
-              <label for="z-down">Z down (write)</label>
+              <label for="z-down">Pen height while writing (mm)</label>
               <input id="z-down" type="number" step="0.1" />
             </div>
             <div class="stack">
-              <label for="travel-feed">Travel feed</label>
+              <label for="travel-feed">Move speed</label>
               <input id="travel-feed" type="number" />
             </div>
             <div class="stack">
-              <label for="write-feed">Write feed</label>
+              <label for="write-feed">Write speed</label>
               <input id="write-feed" type="number" />
             </div>
             <div class="stack" id="pen-z-wrap" hidden>
-              <label for="pen-z-offset">A1 pen Z offset (mm)</label>
+              <label for="pen-z-offset">Extra lift because the pen hangs below the nozzle (mm)</label>
               <input id="pen-z-offset" type="number" step="0.5" />
             </div>
             <div class="stack">
-              <label for="y-dir">Page down is</label>
+              <label for="y-dir">Down the page is toward</label>
               <select id="y-dir">
-                <option value="neg">−Y (toward front, typical)</option>
-                <option value="pos">+Y (A1: top of page at back of bed)</option>
+                <option value="neg">The front of the printer (typical)</option>
+                <option value="pos">The back of the printer (Bambu A1: tape the top of the page at the back)</option>
               </select>
             </div>
           </div>
           <div class="toolbar" style="margin-top:16px;">
-            <label class="hint"><input type="checkbox" id="mirror-x" /> Mirror X (A1 on: page top at the back reads left-to-right)</label>
-            <label class="hint"><input type="checkbox" id="home-xy" /> Home X/Y at start (off for A1 — start G-code homes itself)</label>
-            <button class="btn secondary" id="save-machine">Save machine</button>
-            <button class="btn" id="cal-square">Download 20 mm calibration square</button>
+            <label class="hint"><input type="checkbox" id="mirror-x" /> Flip left-right (on for Bambu A1 so the page reads normally)</label>
+            <label class="hint"><input type="checkbox" id="home-xy" /> Home the printer at the start (leave off for Bambu A1 — its file already homes)</label>
+            <button class="btn secondary" id="save-machine">Save printer settings</button>
+            <button class="btn" id="cal-square">Download a 20 mm test square</button>
           </div>
         </div>
 
         <article class="card" id="a1-help" hidden>
-          <h3 style="margin-top:0;">Bambu Lab A1 setup</h3>
+          <h3 style="margin-top:0;">If your printer is a Bambu Lab A1</h3>
+          <p class="hint" style="margin:0 0 12px;">The A1 is a small open-frame 3D printer. Use this checklist only if you selected that model above. The pen hangs lower than the plastic nozzle, so a normal “home everything” print can drive the nib into the bed — follow these steps instead.</p>
           <ol class="hint" style="padding-left:1.2rem; line-height:1.55;">
             <li>Print an <strong>A1</strong> pen holder — not a P1/X1 mount. Start with <a href="https://makerworld.com/en/models/429109-pen-holder-a1-a1-mini-plotter" target="_blank" rel="noopener">Pen Holder A1 / A1 Mini</a> or the simpler <a href="https://makerworld.com/en/models/1362648-easy-penholder-a1-a1-mini" target="_blank" rel="noopener">Easy penholder</a>. The modular <a href="https://makerworld.com/en/models/2029113-modular-system-for-a1-p1-x1-series" target="_blank" rel="noopener">UMTS by Falu</a> also lists an A1 profile.</li>
             <li>Unload filament. Leave AMS Lite disconnected for this job. Mount the holder per its page, then clamp a fineliner. The nib sits <em>below</em> the nozzle — that gap is <strong>pen Z offset</strong>.</li>
@@ -422,12 +445,13 @@
             <li>Print Files → your file. Turn <strong>off</strong> bed leveling, flow/nozzle calibration, AMS, and spaghetti detection if the start dialog offers them. Stay next to the machine for Z home. If the pen hits the bed before the nozzle does, abort immediately and increase the offset — or make sure Y2 actually clears the pen off the plate.</li>
             <li>When the dry-run path looks right, run the 20 mm square. Lower pen Z offset a millimeter at a time until the square is a clean line, then write a short word. <strong>Mirror X</strong> is on for the A1 so the page reads left-to-right when you pick it up with the top at the back. Uncheck it if letters are still backwards.</li>
           </ol>
-          <p class="hint">A1 volume is 256×256×256 mm. This sequence is the A1-Mini plotter start G-code with X/Y limits changed for the full A1 (center X128, present at Y254). Watch the first home. Do not home Z from the stock print profile with a pen mounted.</p>
+          <p class="hint">The A1’s build area is 256×256 mm. Watch the first home. Do not use the stock plastic-print home with a pen mounted.</p>
         </article>
 
         <p class="hint" id="generic-machine-hint">
-          Origin is the top-left of the writing area in machine coordinates, after homing.
-          Start with a dry-run, then the 20 mm square, then a short word. If firmware blocks cold motion, enable “allow cold extrusion” / <code>M302</code> on Marlin.
+          After you pick a printer, clip a fineliner in a printed pen holder, tape paper to a smooth plate, and download a <strong>practice file</strong> first (pen stays up). Then a 20 mm test square, then a short word.
+          “Pen height while writing” is where the nib just marks the paper. “Pen height while moving” should clear the page. Home left-right and front-back only — never home the up-down axis with a pen mounted.
+          If the printer refuses to move while cold, look in its firmware settings for “allow cold extrusion.”
         </p>
       </section>
     </main>
@@ -439,7 +463,7 @@
         My Handwriting is a <a href="https://buildbeyondbelief.com/" target="_blank" rel="noopener">Build Beyond Belief</a> studio tool.
         No account. Nothing is uploaded. <a href="https://github.com/yoans/my-handwriting" target="_blank" rel="noopener">Source on GitHub</a>.
       </p>
-      <p>Watch the first plot. A pen below the nozzle will hit the bed if Z is wrong.</p>
+      <p>Stay next to the first plot. If the pen hangs below the usual nozzle, it can hit the bed if it is too low.</p>
     </div>
   </footer>
   <script type="module" src="js/app.js"></script>

@@ -157,12 +157,12 @@ export function analyzeBounds(strokes, machine) {
     || page.maxX > bedX + slop || page.maxY > bedY + slop;
   const paperOff = extra.left > slop || extra.right > slop || extra.top > slop || extra.bottom > slop;
   const bits = [];
-  if (pageOffBed) bits.push("writable area sits off the bed — shrink paper size or move origin");
+  if (pageOffBed) bits.push("the writable paper area sits off the printer bed — shrink the paper size or move where the paper sits");
   if (extra.left > slop) bits.push(`${extra.left.toFixed(1)} mm off the left`);
   if (extra.right > slop) bits.push(`${extra.right.toFixed(1)} mm off the right`);
   if (extra.top > slop) bits.push(`${extra.top.toFixed(1)} mm off the top`);
   if (extra.bottom > slop) bits.push(`${extra.bottom.toFixed(1)} mm off the bottom`);
-  if (offBed && !pageOffBed) bits.push(`${offBed} G-code points off the bed`);
+  if (offBed && !pageOffBed) bits.push(`${offBed} pen points would miss the printer bed`);
   return {
     extra,
     offPaper,

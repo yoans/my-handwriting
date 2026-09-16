@@ -118,10 +118,10 @@ export const DEFAULT_MACHINE = {
 };
 
 export const PRESETS = {
-  marlin: { label: "Generic Marlin / Ender", bedX: 220, bedY: 220, originX: 15, originY: 200, paperWidth: 180, paperHeight: 250, zUp: 5, zDown: 0.4, travelFeed: 6000, writeFeed: 1400, flavor: "marlin", homeXY: true, yDownIsNegative: true },
-  prusa: { label: "Prusa MK3/MK4", bedX: 250, bedY: 210, originX: 15, originY: 190, paperWidth: 180, paperHeight: 180, zUp: 5, zDown: 0.4, travelFeed: 6000, writeFeed: 1400, flavor: "marlin", homeXY: true, yDownIsNegative: true },
+  marlin: { label: "Most other 3D printers (Marlin / Ender)", bedX: 220, bedY: 220, originX: 15, originY: 200, paperWidth: 180, paperHeight: 250, zUp: 5, zDown: 0.4, travelFeed: 6000, writeFeed: 1400, flavor: "marlin", homeXY: true, yDownIsNegative: true },
+  prusa: { label: "Prusa MK3 / MK4", bedX: 250, bedY: 210, originX: 15, originY: 190, paperWidth: 180, paperHeight: 180, zUp: 5, zDown: 0.4, travelFeed: 6000, writeFeed: 1400, flavor: "marlin", homeXY: true, yDownIsNegative: true },
   bambu_a1: {
-    label: "Bambu Lab A1",
+    label: "Bambu Lab A1 (small desktop printer this app is tuned for)",
     bedX: 256,
     bedY: 256,
     originX: 28,
@@ -138,8 +138,8 @@ export const PRESETS = {
     penZOffset: 20,
     xMirror: true,
   },
-  bambu: { label: "Bambu P1/X1", bedX: 256, bedY: 256, originX: 18, originY: 230, paperWidth: 180, paperHeight: 200, zUp: 5, zDown: 0, travelFeed: 9000, writeFeed: 1200, flavor: "bambu", homeXY: false, yDownIsNegative: true },
-  klipper: { label: "Klipper", bedX: 220, bedY: 220, originX: 15, originY: 200, paperWidth: 180, paperHeight: 250, zUp: 5, zDown: 0.4, travelFeed: 6000, writeFeed: 1400, flavor: "klipper", homeXY: true, yDownIsNegative: true },
+  bambu: { label: "Other Bambu printers (P1 / X1)", bedX: 256, bedY: 256, originX: 18, originY: 230, paperWidth: 180, paperHeight: 200, zUp: 5, zDown: 0, travelFeed: 9000, writeFeed: 1200, flavor: "bambu", homeXY: false, yDownIsNegative: true },
+  klipper: { label: "Klipper firmware (many custom printers)", bedX: 220, bedY: 220, originX: 15, originY: 200, paperWidth: 180, paperHeight: 250, zUp: 5, zDown: 0.4, travelFeed: 6000, writeFeed: 1400, flavor: "klipper", homeXY: true, yDownIsNegative: true },
 };
 
 export function loadMachine() {

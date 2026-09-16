@@ -280,10 +280,10 @@ function drawCapture() {
 
   ctx.lineWidth = 1;
   const lines = [
-    [g.cap, "#6366f1", "cap"],
-    [g.xHeight, "#06b6d4", "x-height"],
+    [g.cap, "#6366f1", "tall letters"],
+    [g.xHeight, "#06b6d4", "small letters"],
     [g.baseline, "#1c1712", "baseline"],
-    [g.descender, "#a78bfa", "descender"],
+    [g.descender, "#a78bfa", "tails"],
   ];
   for (const [y, color, label] of lines) {
     ctx.strokeStyle = color;
@@ -445,11 +445,11 @@ function updateBoundsUi(report, missing) {
   const status = $("bounds-status");
   const bar = $("bounds-bar");
   const parts = [];
-  if (missing?.length) parts.push(`Missing from library: ${missing.join(" ")}`);
+  if (missing?.length) parts.push(`Missing letters (save them under Write): ${missing.join(" ")}`);
   if (lastCompose.strokes.length) {
     parts.push(`${lastCompose.strokes.length} strokes · ${lastCompose.bounds.width.toFixed(0)} × ${lastCompose.bounds.height.toFixed(0)} mm`);
     if (placements.length) parts.push(`${placements.length} stamp${placements.length === 1 ? "" : "s"}`);
-  } else parts.push("Nothing to draw yet. Capture letters and/or stamp a drawing.");
+  } else parts.push("Nothing to draw yet. Save letters under Write, or add a stamp.");
   miss.textContent = parts.join(" · ");
   if (!bar || !status) return;
   if (!report || report.empty) {
@@ -458,7 +458,7 @@ function updateBoundsUi(report, missing) {
     return;
   }
   bar.dataset.state = report.ok ? "ok" : "bad";
-  status.textContent = report.ok ? "On the page and on the bed" : report.summary;
+  status.textContent = report.ok ? "Fits on the paper and on the printer bed" : report.summary;
 }
 
 function drawCompose() {
@@ -600,7 +600,7 @@ function renderVariants() {
     btn.title = "Click to delete this variant";
     btn.appendChild(drawThumb(glyph));
     btn.addEventListener("click", () => {
-      if (!confirm("Delete this variant?")) return;
+      if (!confirm("Delete this saved drawing?")) return;
       if (mode === "word") removeWord(library, $("word-target").value, index);
       else removeGlyph(library, $("glyph-target").value, index);
       library = loadLibrary();
@@ -611,7 +611,7 @@ function renderVariants() {
     list.appendChild(btn);
   });
   if (!items.length) {
-    list.innerHTML = `<p class="hint">No variants saved yet for this ${mode}.</p>`;
+    list.innerHTML = `<p class="hint">Nothing saved yet for this ${mode === "word" ? "word" : "character"}. Draw it on the paper above, then save.</p>`;
   }
 }
 
@@ -619,7 +619,7 @@ function syncMode() {
   const mode = $("capture-mode").value;
   $("glyph-target-wrap").hidden = mode !== "glyph";
   $("word-target-wrap").hidden = mode !== "word";
-  $("save-capture").textContent = mode === "page" ? "Export traced G-code" : "Save into library";
+  $("save-capture").textContent = mode === "page" ? "Download this page for the printer" : mode === "word" ? "Save this word" : "Save this letter";
   renderVariants();
   drawCapture();
 }
@@ -641,7 +641,7 @@ function saveCapture() {
     lastCompose = { strokes: pageStrokes, missing: [], bounds: boundsOfStrokes(pageStrokes) };
     const { gcode, warnings } = strokesToGcode(pageStrokes, machine, { title: "traced-page" });
     download("traced-page.gcode", gcode);
-    setStatus(warnings.length ? `Exported with warnings: ${warnings[0]}` : "Exported traced page G-code.");
+    setStatus(warnings.length ? `Downloaded with a warning: ${warnings[0]}` : "Downloaded a print file for this page.");
     return;
   }
 
@@ -661,7 +661,7 @@ function saveCapture() {
   renderVariants();
   drawCapture();
   drawCompose();
-  setStatus("Saved. Capture another variant — three to five per letter looks far more human.");
+  setStatus("Saved. Draw it a couple more times — mixed versions look more like real handwriting.");
   syncDemoBanners();
   autosave(true);
 }
@@ -712,14 +712,14 @@ function syncStampSource() {
   syncTraceControls();
   if (doodle) {
     $("stamp-status").textContent = doodleStrokes.length
-      ? `${doodleStrokes.length} stroke${doodleStrokes.length === 1 ? "" : "s"}. Save, then stamp them onto Compose.`
-      : "Draw on the paper with a stylus or mouse. Stroke order is how the pen will move.";
+      ? `${doodleStrokes.length} stroke${doodleStrokes.length === 1 ? "" : "s"}. Save, then open Note and click the paper to place it.`
+      : "Draw on the paper with a finger, mouse, or tablet pen. The printer will follow the same order you draw.";
   } else if (lastTrace?.count) {
-    $("stamp-status").textContent = `${lastTrace.count} paths ready. Save, then stamp them onto Compose.`;
+    $("stamp-status").textContent = `${lastTrace.count} paths ready. Save, then open Note and click the paper to place it.`;
   } else {
     $("stamp-status").textContent = isShadeMode($("trace-mode").value)
-      ? "Load a photo. Wander / hatch / squiggle / rings turn gray values into pen shading."
-      : "Load a photo of a drawing on plain paper. Darker marks become paths.";
+      ? "Load a photo. Wander, hatch, squiggle, and rings turn light and dark areas into pen shading."
+      : "Load a photo of a drawing on plain paper. Dark marks become the pen path.";
   }
   drawStampPreview();
 }
@@ -749,10 +749,10 @@ function retraceStamp() {
   if (!doodleMode()) {
     drawStampPreview();
     $("stamp-status").textContent = lastTrace.count
-      ? `${lastTrace.count} paths ready${shade ? ` · ${Number($("trace-shades").value) || 32} shades` : ""}. Save, then stamp them onto Compose.`
+      ? `${lastTrace.count} paths ready${shade ? ` · ${Number($("trace-shades").value) || 32} gray steps` : ""}. Save, then open Note and click the paper to place it.`
       : shade
-        ? "No shade paths — raise Contrast, raise density, or invert."
-        : "No ink found — try a lower threshold, invert, or a higher-contrast photo.";
+        ? "No pen lines yet — try raising Contrast, packing lines tighter, or Invert."
+        : "No ink found — try a lower Ink threshold, Invert, or a photo with stronger contrast.";
   }
 }
 
@@ -773,7 +773,7 @@ function drawDoodlePreview() {
   if (!ink.length) {
     ctx.fillStyle = "#4a4036";
     ctx.font = "28px 'Space Grotesk', sans-serif";
-    ctx.fillText("Draw a doodle here.", 48, canvas.height / 2);
+    ctx.fillText("Draw here. The printer copies these strokes.", 48, canvas.height / 2);
   }
   ctx.strokeStyle = "#1c1712";
   ctx.lineWidth = 3.2;
@@ -800,7 +800,7 @@ function drawStampPreview() {
   if (!stampImage) {
     ctx.fillStyle = "#4a4036";
     ctx.font = "28px 'Space Grotesk', sans-serif";
-    ctx.fillText("Drop a photo of a drawing here.", 48, canvas.height / 2);
+    ctx.fillText("Drop a photo here, or use Load photo.", 48, canvas.height / 2);
     return;
   }
   if (!lastTrace) return;
@@ -855,8 +855,8 @@ function drawStampPreview() {
   }
   ctx.fillStyle = "#4a4036";
   ctx.font = "16px 'Space Grotesk', sans-serif";
-  ctx.fillText(previewKind === "gray" ? "grayscale" : "ink mask", 24, 28);
-  ctx.fillText("pen paths", split + 20, 28);
+  ctx.fillText(previewKind === "gray" ? "what the computer sees" : "what counts as ink", 24, 28);
+  ctx.fillText("what the pen will draw", split + 20, 28);
 }
 
 function loadStampFile(file) {
@@ -918,8 +918,8 @@ function renderStampLists() {
   composeBox.innerHTML = "";
   const stamps = library.stamps || [];
   if (!stamps.length) {
-    box.innerHTML = `<p class="hint">No stamps yet.</p>`;
-    composeBox.innerHTML = `<p class="hint">Draw or scan a stamp first.</p>`;
+    box.innerHTML = `<p class="hint">No stamps yet. Load a photo or draw one above, then save.</p>`;
+    composeBox.innerHTML = `<p class="hint">Save a stamp first, then click this paper to place it.</p>`;
     return;
   }
   if (!selectedStampId || !stamps.some((s) => s.id === selectedStampId)) {
@@ -1059,7 +1059,7 @@ function saveStamp() {
   library = loadLibrary();
   selectedStampId = stamp.id;
   renderStampLists();
-  $("stamp-status").textContent = `Saved “${stamp.name}”. Open Note, then click the page or Fun run.`;
+  $("stamp-status").textContent = `Saved “${stamp.name}”. Open Note, then click the paper to place it.`;
   syncDemoBanners();
   autosave(true);
 }
@@ -1168,7 +1168,7 @@ function readMachineForm() {
 function exportNote(dryRun) {
   drawCompose();
   if (!lastCompose.strokes.length) {
-    alert("Nothing to export. Capture letters and/or stamp a drawing first.");
+    alert("Nothing to download yet. Save some letters under Write, or add a stamp, then come back here.");
     return;
   }
   let strokes = lastCompose.strokes;
@@ -1190,7 +1190,7 @@ function exportNote(dryRun) {
         });
         report = analyzeBounds(strokes, machine);
       }
-    } else if (!confirm(`This G-code goes out of bounds:\n${report.summary}\n\nDownload anyway?`)) {
+    } else if (!confirm(`This print would go off the paper or the printer bed:\n${report.summary}\n\nDownload anyway?`)) {
       return;
     }
   }
@@ -1200,7 +1200,7 @@ function exportNote(dryRun) {
   });
   download(dryRun ? "note-dry-run.gcode" : "note.gcode", gcode);
   if (warnings.length && !$("auto-fix-export")?.checked) {
-    alert(`Exported, but check bed bounds:\n${warnings.slice(0, 6).join("\n")}`);
+    alert(`Downloaded, but check the paper and printer bed:\n${warnings.slice(0, 6).join("\n")}`);
   } else if (warnings.length) {
     setStatus(`Downloaded with auto-fit. ${warnings[0]}`);
   }
@@ -1305,7 +1305,7 @@ function init() {
   $("fun-run").addEventListener("click", () => {
     const stamp = library.stamps?.find((s) => s.id === selectedStampId);
     if (!stamp) {
-      alert("Save a stamp first.");
+      alert("Save a stamp first, then click this button.");
       return;
     }
     const row = funRunPlacements(stamp, {
@@ -1338,7 +1338,7 @@ function init() {
   $("export-dry").addEventListener("click", () => exportNote(true));
   $("fit-page").addEventListener("click", () => {
     const out = shrinkToFitPage();
-    setStatus(out.changed ? `x-height is now ${out.xHeight.toFixed(2)} mm so the note stays on the page.` : "Already on the page.");
+    setStatus(out.changed ? `Letter height is now ${out.xHeight.toFixed(2)} mm so the note stays on the paper.` : "Already fits on the paper.");
     autosave();
   });
   $("nudge-stamps").addEventListener("click", () => {

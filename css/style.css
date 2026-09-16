@@ -476,6 +476,20 @@ textarea {
 
 .card ol { color: var(--color-text-muted); }
 
+.how-card {
+  margin: 0 0 22px;
+}
+
+.how-card ol {
+  margin: 8px 0 0;
+  padding-left: 1.2rem;
+  color: var(--color-text-muted);
+}
+
+.how-card li {
+  margin-bottom: 8px;
+}
+
 .variant-list {
   display: flex;
   gap: 8px;
