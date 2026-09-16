@@ -35,32 +35,47 @@ function drawPaperStrokes(canvas, strokes, lineWidth = 1.5) {
   }
 }
 
-function samplePhoto(size = 148) {
-  const data = new Uint8ClampedArray(size * size * 4);
-  const cx = size * 0.5;
-  const cy = size * 0.5;
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const nx = (x - cx) / size;
-      const ny = (y - cy) / size;
-      const face = Math.hypot(nx / 0.28, (ny + 0.02) / 0.34);
-      const hair = Math.hypot(nx / 0.32, (ny + 0.16) / 0.22);
-      let v = 232;
-      if (hair < 1 && ny < 0.02) v = 42 + hair * 28;
-      else if (face < 1) {
-        v = 108 + ny * 40;
-      const eyeL = Math.hypot(x - cx + size * 0.09, y - cy + size * 0.02);
-      const eyeR = Math.hypot(x - cx - size * 0.09, y - cy + size * 0.02);
-      if (eyeL < size * 0.05 || eyeR < size * 0.05) v = 22;
-      const mouth = y > cy + size * 0.1 && y < cy + size * 0.15
-        && Math.abs(x - cx) < size * 0.09;
-        if (mouth) v = 70;
-      }
-      const i = (y * size + x) * 4;
-      data[i] = data[i + 1] = data[i + 2] = v;
-      data[i + 3] = 255;
-    }
+function setPx(data, size, x, y, v) {
+  x |= 0;
+  y |= 0;
+  if (x < 0 || y < 0 || x >= size || y >= size) return;
+  const i = (y * size + x) * 4;
+  data[i] = data[i + 1] = data[i + 2] = v;
+  data[i + 3] = 255;
+}
+
+function fillRect(data, size, x0, y0, x1, y1, v) {
+  const xa = Math.max(0, Math.min(x0, x1) | 0);
+  const xb = Math.min(size - 1, Math.max(x0, x1) | 0);
+  const ya = Math.max(0, Math.min(y0, y1) | 0);
+  const yb = Math.min(size - 1, Math.max(y0, y1) | 0);
+  for (let y = ya; y <= yb; y++) {
+    for (let x = xa; x <= xb; x++) setPx(data, size, x, y, v);
   }
+}
+
+/** High-contrast house: outline stays a house, shade modes still read as one. */
+function samplePhoto(size = 200) {
+  const data = new Uint8ClampedArray(size * size * 4);
+  for (let i = 0; i < size * size; i++) {
+    data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = 242;
+    data[i * 4 + 3] = 255;
+  }
+  fillRect(data, size, size * 0.22, size * 0.48, size * 0.78, size * 0.84, 132);
+  for (let y = size * 0.2; y < size * 0.52; y++) {
+    const t = (y - size * 0.2) / (size * 0.32);
+    const half = size * (0.02 + t * 0.32);
+    fillRect(data, size, size * 0.5 - half, y, size * 0.5 + half, y, 48);
+  }
+  fillRect(data, size, size * 0.62, size * 0.26, size * 0.72, size * 0.48, 64);
+  fillRect(data, size, size * 0.3, size * 0.56, size * 0.44, size * 0.7, 220);
+  fillRect(data, size, size * 0.56, size * 0.56, size * 0.7, size * 0.7, 220);
+  fillRect(data, size, size * 0.36, size * 0.56, size * 0.38, size * 0.7, 70);
+  fillRect(data, size, size * 0.3, size * 0.62, size * 0.44, size * 0.64, 70);
+  fillRect(data, size, size * 0.62, size * 0.56, size * 0.64, size * 0.7, 70);
+  fillRect(data, size, size * 0.56, size * 0.62, size * 0.7, size * 0.64, 70);
+  fillRect(data, size, size * 0.45, size * 0.62, size * 0.55, size * 0.84, 36);
+  fillRect(data, size, size * 0.51, size * 0.72, size * 0.53, size * 0.74, 200);
   return { width: size, height: size, data };
 }
 
@@ -89,23 +104,23 @@ export function renderHomeDashboard() {
   const demo = makeDemoLibrary();
   const note = layoutText(demo, "Hi there", {
     xHeightMm: 4.4,
-    maxWidth: 88,
-    seed: 4,
-    jitter: { size: 0.03, rotation: 1.1, baseline: 0.04 },
+    maxWidth: 90,
+    seed: 13,
+    jitter: { size: 0.06, rotation: 2.4, baseline: 0.09 },
     marginLeft: 2,
     marginTop: 2,
   });
   drawPaperStrokes(noteCanvas, note.strokes, 2.1);
   drawPaperStrokes(document.getElementById("home-doodle"), demo.stamps[0]?.strokes, 2.4);
 
-  const photo = samplePhoto(150);
+  const photo = samplePhoto(200);
   drawPhoto(document.getElementById("home-photo"), photo);
   const modes = [
-    ["outline", 1.4, { shades: 10, density: 13, threshold: 150 }],
-    ["hatch", 0.95, { shades: 10, density: 10, threshold: 150 }],
-    ["squiggle", 1.05, { shades: 10, density: 10, threshold: 150 }],
-    ["rings", 0.9, { shades: 10, density: 9, threshold: 150 }],
-    ["spiral", 1.05, { shades: 8, density: 5, threshold: 150 }],
+    ["outline", 1.6, { threshold: 150 }],
+    ["hatch", 0.95, { shades: 12, density: 8, threshold: 140 }],
+    ["squiggle", 1.05, { shades: 12, density: 8, threshold: 140 }],
+    ["rings", 0.95, { shades: 12, density: 7, threshold: 140 }],
+    ["spiral", 1.05, { shades: 10, density: 5, threshold: 140 }],
   ];
   for (const [mode, width, opts] of modes) {
     const stamp = imageDataToStamp(photo, { mode, ...opts });
