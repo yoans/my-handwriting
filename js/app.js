@@ -13,6 +13,7 @@ import {
   mergeLibraries, backupFilename, wipeStoredProject, emptyProject,
 } from "./persist.js";
 import { mergeDemoKit, libraryUsesDemo } from "./demo.js";
+import { renderHomeDashboard } from "./home.js";
 
 const CHARSET = [
   ..."abcdefghijklmnopqrstuvwxyz",
@@ -162,33 +163,34 @@ function syncDemoBanners() {
   });
 }
 
-function goToPanel(name) {
+const PANELS = ["home", "capture", "stamps", "compose", "machine"];
+
+function panelFromHash() {
+  const name = location.hash.replace(/^#/, "");
+  return PANELS.includes(name) ? name : "home";
+}
+
+function goToPanel(name, opts = {}) {
+  if (!PANELS.includes(name)) name = "home";
   document.querySelectorAll(".nav-btn").forEach((b) => {
     if (b.dataset.panel === name) b.setAttribute("aria-current", "page");
     else b.removeAttribute("aria-current");
   });
   document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === `panel-${name}`));
+  document.querySelector(".app-shell")?.classList.toggle("on-home", name === "home");
+  if (name === "home") renderHomeDashboard();
   if (name === "compose") drawCompose();
-  if (name === "stamps") drawStampPreview();
-}
-
-const WELCOME_KEY = "my-handwriting-welcome-v1";
-
-function initWelcome() {
-  const modal = $("welcome");
-  if (!modal) return;
-  if (!localStorage.getItem(WELCOME_KEY)) modal.hidden = false;
-  modal.querySelectorAll("[data-start]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      localStorage.setItem(WELCOME_KEY, "1");
-      modal.hidden = true;
-      goToPanel(btn.dataset.start);
-    });
-  });
-  $("welcome-dismiss")?.addEventListener("click", () => {
-    localStorage.setItem(WELCOME_KEY, "1");
-    modal.hidden = true;
-  });
+  if (name === "stamps") {
+    if (opts.doodle) {
+      $("stamp-source").value = "doodle";
+      syncStampSource();
+    }
+    drawStampPreview();
+  }
+  if (!opts.fromHash) {
+    const hash = `#${name}`;
+    if (location.hash !== hash) history.replaceState(null, "", hash);
+  }
 }
 
 function updateSaveStatus(result) {
@@ -1210,11 +1212,21 @@ function initNav() {
   document.querySelectorAll(".nav-btn").forEach((btn) => {
     btn.addEventListener("click", () => goToPanel(btn.dataset.panel));
   });
+  $("go-home")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    goToPanel("home");
+  });
+  document.querySelectorAll("[data-go]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      goToPanel(btn.dataset.go, { doodle: btn.dataset.doodle === "1" });
+    });
+  });
+  window.addEventListener("hashchange", () => goToPanel(panelFromHash(), { fromHash: true }));
 }
 
 function init() {
   initNav();
-  initWelcome();
+  goToPanel(panelFromHash(), { fromHash: true });
   wireCapture();
   wireStampCanvas();
   wireComposeCanvas();

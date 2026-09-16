@@ -27,27 +27,8 @@
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-  <div class="welcome" id="welcome" hidden>
-    <div class="welcome-card">
-      <p class="section-label">Build Beyond Belief</p>
-      <h2>Plot <span class="gradient-text">your</span> hand.</h2>
-      <p>
-        Clip a pen on a 3D printer and it can write like a plotter. This site records
-        <em>your</em> strokes — not a font — then downloads a print file the machine can follow.
-        Nothing is uploaded. It all stays in this browser.
-      </p>
-      <div class="welcome-actions">
-        <button class="btn" type="button" data-start="capture">Write my letters</button>
-        <button class="btn secondary" type="button" data-start="stamps">Make a picture stamp</button>
-        <button class="btn ghost" type="button" data-start="machine">Set up the printer</button>
-      </div>
-      <p class="hint">A sample handwriting is already loaded so you can type a note before you draw your own letters.</p>
-      <button class="btn ghost" type="button" id="welcome-dismiss">Skip for now</button>
-    </div>
-  </div>
-
   <header class="topbar">
-    <a class="logo" href="https://buildbeyondbelief.com/" target="_blank" rel="noopener">
+    <a class="logo" href="#home" id="go-home">
       <svg class="logo-mark" viewBox="40 40 200 200" aria-hidden="true">
         <defs>
           <linearGradient id="nav-g1" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#6366f1"/><stop offset="100%" stop-color="#06b6d4"/></linearGradient>
@@ -61,7 +42,8 @@
       <span class="logo-text">My Handwriting</span>
     </a>
     <nav class="step-nav" aria-label="Studio steps">
-      <button class="nav-btn" data-panel="capture" aria-current="page">1. Write</button>
+      <button class="nav-btn" data-panel="home" aria-current="page">Home</button>
+      <button class="nav-btn" data-panel="capture">1. Write</button>
       <button class="nav-btn" data-panel="stamps">2. Stamps</button>
       <button class="nav-btn" data-panel="compose">3. Note</button>
       <button class="nav-btn" data-panel="machine">4. Printer</button>
@@ -69,7 +51,7 @@
     <a class="topbar-cta" href="https://buildbeyondbelief.com/" target="_blank" rel="noopener">Build Beyond Belief</a>
   </header>
 
-  <div class="app-shell">
+  <div class="app-shell on-home">
     <aside class="sidebar">
       <div class="brand">
         <p class="side-label">Studio</p>
@@ -87,7 +69,93 @@
     </aside>
 
     <main class="main">
-      <section class="panel active" id="panel-capture">
+      <section class="panel active" id="panel-home">
+        <p class="side-label">Home</p>
+        <h2>What you can make</h2>
+        <p class="lede">
+          Clip a pen on a 3D printer and it writes like a plotter. This site records
+          <em>your</em> handwriting, turns photos into pen drawings, and lets you doodle —
+          then downloads a print file. Nothing is uploaded. It stays in this browser.
+        </p>
+
+        <div class="dash-grid">
+          <article class="dash-card">
+            <p class="dash-tag">Handwritten notes</p>
+            <h3>Type a message in your own hand</h3>
+            <p>Save how you write each letter. Type a note. The printer replays those strokes, in order — not a font.</p>
+            <div class="paper-stage dash-paper">
+              <canvas id="home-note" width="720" height="280"></canvas>
+            </div>
+            <div class="toolbar">
+              <button class="btn" type="button" data-go="compose">Try a sample note</button>
+              <button class="btn secondary" type="button" data-go="capture">Write my letters</button>
+            </div>
+          </article>
+
+          <article class="dash-card">
+            <p class="dash-tag">Doodles</p>
+            <h3>Draw it yourself</h3>
+            <p>A star, a name, a scribble. The printer follows the same stroke order you drew, like replaying a finger on paper.</p>
+            <div class="paper-stage dash-paper">
+              <canvas id="home-doodle" width="420" height="280"></canvas>
+            </div>
+            <div class="toolbar">
+              <button class="btn" type="button" data-go="stamps" data-doodle="1">Draw a doodle</button>
+            </div>
+          </article>
+
+          <article class="dash-card dash-wide">
+            <p class="dash-tag">Photos into pen lines</p>
+            <h3>One picture, many drawing styles</h3>
+            <p>Load a photo or a kid’s drawing. Choose outline, hatch, squiggle, rings, or a single wandering line. Save it as a stamp and plant it on the note.</p>
+            <div class="dash-modes">
+              <figure>
+                <canvas id="home-photo" width="220" height="220"></canvas>
+                <figcaption>Photo</figcaption>
+              </figure>
+              <figure>
+                <canvas id="home-outline" width="220" height="220"></canvas>
+                <figcaption>Outline</figcaption>
+              </figure>
+              <figure>
+                <canvas id="home-hatch" width="220" height="220"></canvas>
+                <figcaption>Hatch</figcaption>
+              </figure>
+              <figure>
+                <canvas id="home-squiggle" width="220" height="220"></canvas>
+                <figcaption>Squiggle</figcaption>
+              </figure>
+              <figure>
+                <canvas id="home-rings" width="220" height="220"></canvas>
+                <figcaption>Rings</figcaption>
+              </figure>
+              <figure>
+                <canvas id="home-spiral" width="220" height="220"></canvas>
+                <figcaption>Wander</figcaption>
+              </figure>
+            </div>
+            <div class="toolbar">
+              <button class="btn" type="button" data-go="stamps">Turn a photo into a stamp</button>
+            </div>
+          </article>
+        </div>
+
+        <div class="card how-card" style="margin-top:28px;">
+          <p class="side-label">Then print it</p>
+          <ol>
+            <li><strong>Write</strong> your letters (or start from the sample hand).</li>
+            <li><strong>Stamps</strong> are optional pictures on the page.</li>
+            <li><strong>Note</strong> is where you type and download a print file.</li>
+            <li><strong>Printer</strong> is where you pick your 3D printer and run a practice pass with the pen in the air.</li>
+          </ol>
+          <div class="toolbar" style="margin-top:14px;">
+            <button class="btn" type="button" data-go="machine">Set up the printer</button>
+            <button class="btn secondary" type="button" data-go="compose">Open the note</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-capture">
         <h2>Write</h2>
         <p class="lede">
           The printer can only replay paths you draw here — it cannot guess from a photo of letters.
