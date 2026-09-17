@@ -1,9 +1,0 @@
-name = "my-handwriting"
-compatibility_date = "2026-09-16"
-
-[assets]
-directory = "."
-
-[[routes]]
-pattern = "my-handwriting.buildbeyondbelief.com"
-custom_domain = true

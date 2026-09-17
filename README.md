@@ -63,10 +63,8 @@ G-code is generic Marlin-style except the **Bambu Lab A1** preset (nozzle home a
 
 ## Deploy
 
-Hosted on Cloudflare at [my-handwriting.buildbeyondbelief.com](https://my-handwriting.buildbeyondbelief.com/). After `npx wrangler login`:
+GitHub Pages on `main`, same pattern as [Project Excavation](https://excavation.buildbeyondbelief.com). Cloudflare DNS for `buildbeyondbelief.com`:
 
-```bash
-bash scripts/cf-deploy.sh
-```
-
-That uploads only the public HTML/CSS/JS (not `.git`). The GitHub Pages copy at `https://yoans.github.io/my-handwriting/` is source backup; the public URL is the Build Beyond Belief subdomain.
+| Type  | Name             | Value             | TTL  | Proxy |
+|-------|------------------|-------------------|------|-------|
+| CNAME | `my-handwriting` | `yoans.github.io` | 3600 | on    |
