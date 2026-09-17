@@ -2,7 +2,7 @@
 
 Turn samples of **your** writing into G-code a 3D printer can follow with a pen in the toolhead.
 
-**Live:** https://yoans.github.io/my-handwriting/
+**Live:** https://my-handwriting.buildbeyondbelief.com/
 
 A [Build Beyond Belief](https://buildbeyondbelief.com/) studio tool. Everything runs in the browser. Letters, stamps, the note, and printer settings auto-save on this device. **Download backup** writes a JSON file you can Restore on another computer or after clearing this site’s data.
 
@@ -60,3 +60,13 @@ G-code is generic Marlin-style except the **Bambu Lab A1** preset (nozzle home a
 - `js/gcode.js` — machine mapping and export
 - `js/trace.js` — photo stamps
 - `js/demo.js` — first-run sample hand
+
+## Deploy
+
+Hosted on Cloudflare at [my-handwriting.buildbeyondbelief.com](https://my-handwriting.buildbeyondbelief.com/). After `npx wrangler login`:
+
+```bash
+bash scripts/cf-deploy.sh
+```
+
+That uploads only the public HTML/CSS/JS (not `.git`). The GitHub Pages copy at `https://yoans.github.io/my-handwriting/` is source backup; the public URL is the Build Beyond Belief subdomain.
