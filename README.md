@@ -2,7 +2,7 @@
 
 Turn samples of **your** writing into G-code a 3D printer can follow with a pen in the toolhead.
 
-**Live:** https://my-handwriting.buildbeyondbelief.com/
+**Live:** https://yoans.github.io/my-handwriting/
 
 A [Build Beyond Belief](https://buildbeyondbelief.com/) studio tool. Everything runs in the browser. Letters, stamps, the note, and printer settings auto-save on this device. **Download backup** writes a JSON file you can Restore on another computer or after clearing this site’s data.
 
@@ -63,8 +63,4 @@ G-code is generic Marlin-style except the **Bambu Lab A1** preset (nozzle home a
 
 ## Deploy
 
-GitHub Pages on `main`, same pattern as [Project Excavation](https://excavation.buildbeyondbelief.com). Cloudflare DNS for `buildbeyondbelief.com`:
-
-| Type  | Name             | Value             | TTL  | Proxy |
-|-------|------------------|-------------------|------|-------|
-| CNAME | `my-handwriting` | `yoans.github.io` | 3600 | on    |
+GitHub Pages on `main`. Push, then the studio is at https://yoans.github.io/my-handwriting/.
