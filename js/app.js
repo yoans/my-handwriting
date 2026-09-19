@@ -12,7 +12,7 @@ import {
   loadProject, persistProject, projectToJson, parseIncomingFile,
   mergeLibraries, backupFilename, wipeStoredProject, emptyProject,
 } from "./persist.js";
-import { mergeDemoKit, libraryUsesDemo } from "./demo.js";
+import { mergeDemoKit, libraryUsesDemo, SAMPLE_NOTE } from "./demo.js";
 import { renderHomeDashboard } from "./home.js";
 
 const CHARSET = [
@@ -111,8 +111,9 @@ function applyProject(project) {
   strokes = Array.isArray(project.capture?.strokes) ? project.capture.strokes : [];
 
   $("note-text").value = project.compose?.text ?? "";
-  if (libraryUsesDemo(library) && !$("note-text").value.trim()) {
-    $("note-text").value = "Hi there";
+  if (libraryUsesDemo(library)) {
+    const t = $("note-text").value.trim();
+    if (!t || t === "Hi there") $("note-text").value = SAMPLE_NOTE;
   }
   $("x-height").value = project.compose?.xHeight ?? 3.2;
   $("line-height").value = project.compose?.lineHeight ?? 2.6;

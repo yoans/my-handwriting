@@ -1,7 +1,7 @@
 import { boundsOfStrokes } from "./geometry.js";
 import { layoutText } from "./layout.js";
 import { imageDataToStamp } from "./trace.js";
-import { makeDemoLibrary } from "./demo.js";
+import { makeDemoLibrary, SAMPLE_NOTE } from "./demo.js";
 
 function drawPaperStrokes(canvas, strokes, lineWidth = 1.5) {
   if (!canvas) return;
@@ -102,7 +102,7 @@ export function renderHomeDashboard() {
   painted = true;
 
   const demo = makeDemoLibrary();
-  const note = layoutText(demo, "Hi there", {
+  const note = layoutText(demo, SAMPLE_NOTE, {
     xHeightMm: 4.4,
     maxWidth: 90,
     seed: 13,

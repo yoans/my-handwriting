@@ -80,6 +80,9 @@ function starStamp() {
   };
 }
 
+/** First-run sample card. Keep this in one place so Home and Note match. */
+export const SAMPLE_NOTE = "Happy\nbirthday!";
+
 /** Casual demo hand so Compose works before you capture your own letters. */
 export function makeDemoLibrary() {
   const glyphs = {
@@ -129,10 +132,22 @@ export function makeDemoLibrary() {
       bez([0.5, 1.02], [0.08, 1.15], [0.12, 0.58], [0.36, 0.52]),
       bez([0.36, 0.52], [0.62, 0.46], [0.58, -0.02], [0.12, 0.08]),
     ])],
-    y: [glyph(0.72, [
+    y: variants(0.72, [
       bez([0.08, 1.02], [0.18, 0.55], [0.32, 0.2], [0.4, 0]),
       bez([0.62, 1.02], [0.5, 0.4], [0.42, -0.2], [0.18, -0.55]),
-    ])],
+    ], [6, 21, 41]),
+    p: variants(0.78, [
+      line([0.16, 1.04], [0.1, -0.58]),
+      bez([0.16, 0.94], [0.76, 1.14], [0.8, 0.1], [0.18, 0.12]),
+    ], [12, 27, 44]),
+    b: variants(0.76, [
+      line([0.12, 1.72], [0.18, 0.02]),
+      bez([0.16, 0.9], [0.74, 1.12], [0.78, 0.06], [0.2, 0.1]),
+    ], [14, 33]),
+    "!": variants(0.32, [
+      bez([0.14, 1.62], [0.1, 1.05], [0.2, 0.52], [0.16, 0.38]),
+      bez([0.1, 0.12], [0.16, 0.2], [0.22, 0.1], [0.12, 0.02]),
+    ], [10, 25]),
     u: [glyph(0.76, [
       bez([0.1, 1.02], [0.08, 0.12], [0.36, -0.08], [0.62, 0.2]),
       line([0.62, 1.02], [0.64, 0.02]),
