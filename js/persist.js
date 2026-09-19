@@ -1,4 +1,5 @@
 import { DEFAULT_MACHINE } from "./library.js";
+import { stripDemoInk } from "./fonts.js";
 
 export const PROJECT_KIND = "my-handwriting-project";
 const LS_PROJECT = "my-handwriting-project-v2";
@@ -27,6 +28,7 @@ export function emptyProject() {
       stampSize: 28,
       funRunCount: 6,
       autoFixExport: true,
+      fontId: "casual",
     },
     capture: {
       mode: "glyph",
@@ -54,13 +56,14 @@ export function emptyProject() {
 }
 
 function normalizeLibrary(lib = {}) {
-  return {
+  const base = {
     version: 1,
     glyphs: lib.glyphs || {},
     words: lib.words || {},
     stamps: Array.isArray(lib.stamps) ? lib.stamps : [],
     updatedAt: lib.updatedAt || null,
   };
+  return stripDemoInk(base);
 }
 
 export function normalizeProject(raw) {
@@ -113,16 +116,22 @@ export function parseIncomingFile(text) {
 export function mergeLibraries(base, incoming) {
   const out = normalizeLibrary(base);
   const add = normalizeLibrary(incoming);
+  const real = (g) => g && !g.demo && !g.sample;
   for (const [ch, variants] of Object.entries(add.glyphs)) {
+    const keep = (variants || []).filter(real);
+    if (!keep.length) continue;
     if (!out.glyphs[ch]) out.glyphs[ch] = [];
-    out.glyphs[ch].push(...variants);
+    out.glyphs[ch].push(...keep);
   }
   for (const [word, variants] of Object.entries(add.words)) {
+    const keep = (variants || []).filter(real);
+    if (!keep.length) continue;
     if (!out.words[word]) out.words[word] = [];
-    out.words[word].push(...variants);
+    out.words[word].push(...keep);
   }
   const ids = new Set(out.stamps.map((s) => s.id));
   for (const stamp of add.stamps) {
+    if (stamp?.demo) continue;
     let id = stamp.id;
     if (!id || ids.has(id)) id = `stamp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     ids.add(id);

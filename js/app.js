@@ -12,7 +12,11 @@ import {
   loadProject, persistProject, projectToJson, parseIncomingFile,
   mergeLibraries, backupFilename, wipeStoredProject, emptyProject,
 } from "./persist.js";
-import { mergeDemoKit, libraryUsesDemo, SAMPLE_NOTE } from "./demo.js";
+import { SAMPLE_NOTE } from "./demo.js";
+import {
+  CUSTOM_FONT_ID, DEFAULT_FONT_ID, SAMPLE_FONTS,
+  composeLibrary, stripDemoInk, hasUserGlyphs,
+} from "./fonts.js";
 import { renderHomeDashboard } from "./home.js";
 
 const CHARSET = [
@@ -76,6 +80,7 @@ function collectProject() {
       stampSize: Number($("stamp-size").value) || 28,
       funRunCount: Number($("fun-run-count").value) || 6,
       autoFixExport: $("auto-fix-export").checked,
+      fontId: $("note-font")?.value || DEFAULT_FONT_ID,
     },
     capture: {
       mode: $("capture-mode").value,
@@ -103,17 +108,23 @@ function collectProject() {
 }
 
 function applyProject(project) {
-  library = mergeDemoKit(project.library || {});
+  library = stripDemoInk(project.library || {});
   placements = project.placements || [];
   machine = { ...DEFAULT_MACHINE, ...project.machine };
   selectedStampId = project.selectedStampId || library.stamps[0]?.id || null;
   selectedPlacement = -1;
   strokes = Array.isArray(project.capture?.strokes) ? project.capture.strokes : [];
 
+  fillFontSelect();
+  const savedFont = project.compose?.fontId;
+  const fontOk = savedFont === CUSTOM_FONT_ID || SAMPLE_FONTS.some((f) => f.id === savedFont);
+  $("note-font").value = fontOk
+    ? savedFont
+    : (hasUserGlyphs(library) ? CUSTOM_FONT_ID : DEFAULT_FONT_ID);
+
   $("note-text").value = project.compose?.text ?? "";
-  if (libraryUsesDemo(library)) {
-    const t = $("note-text").value.trim();
-    if (!t || t === "Hi there") $("note-text").value = SAMPLE_NOTE;
+  if (!$("note-text").value.trim() || $("note-text").value.trim() === "Hi there") {
+    $("note-text").value = SAMPLE_NOTE;
   }
   $("x-height").value = project.compose?.xHeight ?? 3.2;
   $("line-height").value = project.compose?.lineHeight ?? 2.6;
@@ -153,15 +164,44 @@ function applyProject(project) {
   drawCapture();
   drawStampPreview();
   drawCompose();
-  syncDemoBanners();
+  syncFontBanners();
 }
 
-function syncDemoBanners() {
-  const on = libraryUsesDemo(library);
-  ["demo-banner-capture", "demo-banner-compose"].forEach((id) => {
-    const el = $(id);
-    if (el) el.hidden = !on;
-  });
+function fillFontSelect() {
+  const sel = $("note-font");
+  if (!sel || sel.dataset.ready === "1") return;
+  sel.innerHTML = "";
+  const custom = document.createElement("option");
+  custom.value = CUSTOM_FONT_ID;
+  custom.textContent = "Your letters";
+  sel.appendChild(custom);
+  for (const font of SAMPLE_FONTS) {
+    const opt = document.createElement("option");
+    opt.value = font.id;
+    opt.textContent = font.name;
+    sel.appendChild(opt);
+  }
+  sel.dataset.ready = "1";
+}
+
+function syncFontBanners() {
+  const fontId = $("note-font")?.value || DEFAULT_FONT_ID;
+  const capture = $("demo-banner-capture");
+  const compose = $("demo-banner-compose");
+  if (capture) {
+    capture.hidden = hasUserGlyphs(library);
+    capture.textContent = "This grid is only letters you draw. Sample hands live on the Note tab, next to Your letters.";
+  }
+  if (compose) {
+    if (fontId === CUSTOM_FONT_ID) {
+      compose.hidden = hasUserGlyphs(library);
+      compose.textContent = "Your letters is empty until you draw some under Write. Or pick a sample hand above to try a note.";
+    } else {
+      const name = SAMPLE_FONTS.find((f) => f.id === fontId)?.name || "a sample hand";
+      compose.hidden = false;
+      compose.textContent = `Using ${name}. Your captured letters stay on Write — they are not mixed in until you pick Your letters.`;
+    }
+  }
 }
 
 const PANELS = ["home", "capture", "stamps", "compose", "machine"];
@@ -346,8 +386,9 @@ function composeLayoutOptions(xHeightMm) {
 }
 
 function composeStrokes(xHeightMm = Number($("x-height").value) || 3.2, stampList = placements) {
-  const result = layoutText(library, $("note-text").value, composeLayoutOptions(xHeightMm));
-  const stampStrokes = placementsToStrokes(library, stampList);
+  const hand = composeLibrary(library, $("note-font")?.value || DEFAULT_FONT_ID);
+  const result = layoutText(hand, $("note-text").value, composeLayoutOptions(xHeightMm));
+  const stampStrokes = placementsToStrokes(hand, stampList);
   const strokes = result.strokes.concat(stampStrokes);
   return {
     result,
@@ -594,8 +635,8 @@ function renderVariants() {
   const list = $("variant-list");
   list.innerHTML = "";
   const items = mode === "word"
-    ? library.words[$("word-target").value] || []
-    : library.glyphs[$("glyph-target").value] || [];
+    ? (library.words[$("word-target").value] || []).filter((g) => !g.demo && !g.sample)
+    : (library.glyphs[$("glyph-target").value] || []).filter((g) => !g.demo && !g.sample);
   items.forEach((glyph, index) => {
     const btn = document.createElement("button");
     btn.className = "variant-thumb" + (index === selectedVariant ? " selected" : "");
@@ -665,7 +706,7 @@ function saveCapture() {
   drawCapture();
   drawCompose();
   setStatus("Saved. Draw it a couple more times — mixed versions look more like real handwriting.");
-  syncDemoBanners();
+  syncFontBanners();
   autosave(true);
 }
 
@@ -1063,7 +1104,7 @@ function saveStamp() {
   selectedStampId = stamp.id;
   renderStampLists();
   $("stamp-status").textContent = `Saved “${stamp.name}”. Open Note, then click the paper to place it.`;
-  syncDemoBanners();
+  syncFontBanners();
   autosave(true);
 }
 
@@ -1237,8 +1278,10 @@ function init() {
     autosave(true);
   }).catch((err) => {
     console.warn(err);
-    library = mergeDemoKit(library);
+    library = stripDemoInk(library);
     fillMachineForm();
+    fillFontSelect();
+    $("note-font").value = DEFAULT_FONT_ID;
     syncStampSource();
     renderGrid();
     renderVariants();
@@ -1246,7 +1289,7 @@ function init() {
     drawCapture();
     drawStampPreview();
     drawCompose();
-    syncDemoBanners();
+    syncFontBanners();
   });
 
   $("capture-mode").addEventListener("change", () => { syncMode(); autosave(); });
@@ -1278,6 +1321,11 @@ function init() {
 
   ["note-text", "x-height", "line-height", "tracking", "word-space", "seed", "jitter"].forEach((id) => {
     $(id).addEventListener("input", () => { drawCompose(); autosave(); });
+  });
+  $("note-font").addEventListener("change", () => {
+    syncFontBanners();
+    drawCompose();
+    autosave();
   });
   $("load-stamp-image").addEventListener("click", () => $("stamp-file").click());
   $("stamp-camera").addEventListener("click", () => $("stamp-camera-file").click());

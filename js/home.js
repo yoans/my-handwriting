@@ -1,7 +1,8 @@
 import { boundsOfStrokes } from "./geometry.js";
 import { layoutText } from "./layout.js";
 import { imageDataToStamp } from "./trace.js";
-import { makeDemoLibrary, SAMPLE_NOTE } from "./demo.js";
+import { makeSampleFont } from "./fonts.js";
+import { SAMPLE_NOTE, starStamp } from "./demo.js";
 
 function drawPaperStrokes(canvas, strokes, lineWidth = 1.5) {
   if (!canvas) return;
@@ -101,7 +102,7 @@ export function renderHomeDashboard() {
   if (!noteCanvas || painted) return;
   painted = true;
 
-  const demo = makeDemoLibrary();
+  const demo = makeSampleFont("casual");
   const note = layoutText(demo, SAMPLE_NOTE, {
     xHeightMm: 4.4,
     maxWidth: 90,
@@ -111,7 +112,7 @@ export function renderHomeDashboard() {
     marginTop: 2,
   });
   drawPaperStrokes(noteCanvas, note.strokes, 2.1);
-  drawPaperStrokes(document.getElementById("home-doodle"), demo.stamps[0]?.strokes, 2.4);
+  drawPaperStrokes(document.getElementById("home-doodle"), starStamp().strokes, 2.4);
 
   const photo = samplePhoto(200);
   drawPhoto(document.getElementById("home-photo"), photo);

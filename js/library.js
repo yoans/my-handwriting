@@ -44,7 +44,7 @@ export function importLibrary(text) {
 }
 
 export function glyphCount(library, ch) {
-  return library.glyphs[ch]?.length || 0;
+  return (library.glyphs[ch] || []).filter((g) => !g.demo && !g.sample).length;
 }
 
 export function addGlyph(library, ch, glyph) {

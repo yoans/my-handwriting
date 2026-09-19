@@ -170,8 +170,8 @@
             <li><strong>Printer</strong> — pick your 3D printer, clip a pen on it, run a practice pass with the pen in the air first.</li>
           </ol>
         </div>
-        <p class="demo-banner" id="demo-banner-capture" hidden>
-          Sample letters are filling in so you can try a note right away. Draw your own hand here — a few of each letter you use will look more like you.
+        <p class="demo-banner" id="demo-banner-capture">
+          This grid is only letters you draw. Sample hands live on the Note tab, next to Your letters.
         </p>
 
         <div class="row">
@@ -344,12 +344,18 @@
       <section class="panel" id="panel-compose">
         <h2>Note</h2>
         <p class="lede">
-          Type the message you want the pen to write. Letters you have not saved yet are skipped and listed below.
-          If you saved a whole word like “the”, that drawing is used instead of spelling it letter by letter.
+          Type the message you want the pen to write. Pick a sample hand, or Your letters after you draw some under Write.
+          If you saved a whole word like “the”, that drawing is used when Your letters is selected.
         </p>
-        <p class="demo-banner" id="demo-banner-compose" hidden>
-          This preview is using sample handwriting. Draw your own letters under Write if you want it to look like you.
+        <p class="demo-banner" id="demo-banner-compose">
+          Using a sample hand. Your captured letters stay on Write — they are not mixed in until you pick Your letters.
         </p>
+        <div class="row" style="margin-bottom:12px;">
+          <div class="stack">
+            <label for="note-font">Hand</label>
+            <select id="note-font"></select>
+          </div>
+        </div>
         <textarea id="note-text" placeholder="Type a short note…"></textarea>
         <details class="more-box">
           <summary>Size, spacing, and how messy it looks</summary>
