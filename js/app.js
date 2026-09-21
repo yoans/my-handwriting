@@ -142,7 +142,7 @@ function applyProject(project) {
 
   $("stamp-name").value = project.stampsUi?.name || "photo";
   if ($("doodle-stamp-name")) $("doodle-stamp-name").value = project.stampsUi?.doodleName || "doodle";
-  $("stamp-source").value = "photo";
+  setStampTab(project.stampsUi?.source === "doodle" ? "doodle" : "photo", { quiet: true });
   const savedMode = project.stampsUi?.mode || "rings";
   $("trace-mode").value = savedMode;
   $("trace-threshold").value = project.stampsUi?.threshold ?? 145;
@@ -224,9 +224,10 @@ function goToPanel(name, opts = {}) {
   if (name === "home") renderHomeDashboard();
   if (name === "compose") drawCompose();
   if (name === "stamps") {
+    if (opts.doodle) setStampTab("doodle");
+    else syncStampTab();
     drawStampPreview();
     drawDoodlePreview();
-    if (opts.doodle) $("section-doodle")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
   if (!opts.fromHash) {
     const hash = `#${name}`;
@@ -747,7 +748,28 @@ function syncTraceControls() {
   }
 }
 
+function setStampTab(tab, opts = {}) {
+  const next = tab === "doodle" ? "doodle" : "photo";
+  if ($("stamp-source")) $("stamp-source").value = next;
+  document.querySelectorAll(".stamp-tab").forEach((btn) => {
+    btn.setAttribute("aria-selected", btn.dataset.stampTab === next ? "true" : "false");
+  });
+  const photo = $("section-photo");
+  const doodle = $("section-doodle");
+  if (photo) photo.hidden = next !== "photo";
+  if (doodle) doodle.hidden = next !== "doodle";
+  if (!opts.quiet) {
+    syncStampSource();
+    autosave();
+  }
+}
+
+function syncStampTab() {
+  setStampTab($("stamp-source")?.value === "doodle" ? "doodle" : "photo", { quiet: true });
+}
+
 function syncStampSource() {
+  syncStampTab();
   syncTraceControls();
   if (lastTrace?.count) {
     $("stamp-status").textContent = `${lastTrace.count} paths ready. Save the photo stamp, then plant it on Note.`;
@@ -904,6 +926,7 @@ function loadStampFile(file) {
     if ($("stamp-name").value === "doodle" || $("stamp-name").value === "photo") {
       $("stamp-name").value = file.name.replace(/\.[^.]+$/, "").slice(0, 40) || "photo";
     }
+    setStampTab("photo", { quiet: true });
     syncStampSource();
     retraceStamp();
   };
@@ -1417,6 +1440,9 @@ function init() {
   });
   $("save-stamp").addEventListener("click", saveStamp);
   $("save-doodle-stamp")?.addEventListener("click", saveDoodleStamp);
+  document.querySelectorAll(".stamp-tab").forEach((btn) => {
+    btn.addEventListener("click", () => setStampTab(btn.dataset.stampTab));
+  });
   $("undo-doodle").addEventListener("click", () => {
     doodleStrokes.pop();
     doodleCurrent = null;

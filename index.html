@@ -230,10 +230,14 @@
 
       <section class="panel" id="panel-stamps">
         <h2>Stamps</h2>
-        <p class="lede">A stamp is a little picture you plant on the note. Trace a photo, or draw a doodle. They are separate on purpose.</p>
+        <p class="lede">A stamp is a little picture you plant on the note. Trace a photo, or draw a doodle.</p>
         <input type="hidden" id="stamp-source" value="photo" />
+        <div class="stamp-tabs" role="tablist" aria-label="Stamp type">
+          <button class="stamp-tab" type="button" role="tab" data-stamp-tab="photo" aria-selected="true">Photo</button>
+          <button class="stamp-tab" type="button" role="tab" data-stamp-tab="doodle" aria-selected="false">Doodle</button>
+        </div>
 
-        <article class="stamp-block" id="section-photo">
+        <article class="stamp-block" id="section-photo" role="tabpanel">
           <p class="side-label">Simple trace</p>
           <h3>Photo to pen lines</h3>
           <p class="hint">Load a picture. Rings is the default — a low-fidelity fill that packs tighter in the darks.</p>
@@ -317,7 +321,7 @@
           <p class="status" id="stamp-status">Load a photo. Rings turn dark areas into nested circles.</p>
         </article>
 
-        <article class="stamp-block" id="section-doodle">
+        <article class="stamp-block" id="section-doodle" role="tabpanel" hidden>
           <p class="side-label">Doodle</p>
           <h3>Draw it yourself</h3>
           <p class="hint">Same stroke order you draw, like replaying a finger on paper.</p>
