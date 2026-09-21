@@ -2,7 +2,7 @@ import { boundsOfStrokes } from "./geometry.js";
 import { layoutText } from "./layout.js";
 import { imageDataToStamp } from "./trace.js";
 import { makeSampleFont } from "./fonts.js";
-import { SAMPLE_NOTE, starStamp } from "./demo.js";
+import { SAMPLE_NOTE, faceStamp } from "./demo.js";
 
 function drawPaperStrokes(canvas, strokes, lineWidth = 1.5) {
   if (!canvas) return;
@@ -112,15 +112,14 @@ export function renderHomeDashboard() {
     marginTop: 2,
   });
   drawPaperStrokes(noteCanvas, note.strokes, 2.1);
-  drawPaperStrokes(document.getElementById("home-doodle"), starStamp().strokes, 2.4);
+  drawPaperStrokes(document.getElementById("home-doodle"), faceStamp().strokes, 2.4);
 
   const photo = samplePhoto(200);
   drawPhoto(document.getElementById("home-photo"), photo);
   const modes = [
-    ["outline", 1.6, { threshold: 150 }],
+    ["rings", 0.95, { shades: 12, density: 7, threshold: 140 }],
     ["hatch", 0.95, { shades: 12, density: 8, threshold: 140 }],
     ["squiggle", 1.05, { shades: 12, density: 8, threshold: 140 }],
-    ["rings", 0.95, { shades: 12, density: 7, threshold: 140 }],
     ["spiral", 1.05, { shades: 10, density: 5, threshold: 140 }],
   ];
   for (const [mode, width, opts] of modes) {

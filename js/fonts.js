@@ -4,8 +4,8 @@ export const CUSTOM_FONT_ID = "custom";
 export const DEFAULT_FONT_ID = "casual";
 
 export const SAMPLE_FONTS = [
-  { id: "casual", name: "Casual print", slant: 7, wobble: 0.042, bounce: 0.03, width: 1, seeds: [3, 17] },
-  { id: "neat", name: "Neat print", slant: 0, wobble: 0.016, bounce: 0.008, width: 0.9, seeds: [5, 11] },
+  { id: "casual", name: "Casual", slant: 7, wobble: 0.042, bounce: 0.03, width: 1, seeds: [3, 17] },
+  { id: "neat", name: "Neat", slant: 0, wobble: 0.016, bounce: 0.008, width: 0.9, seeds: [5, 11] },
   { id: "loopy", name: "Loopy", slant: 14, wobble: 0.055, bounce: 0.07, width: 1.12, seeds: [8, 23] },
 ];
 

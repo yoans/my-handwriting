@@ -48,26 +48,29 @@
       <button class="nav-btn" data-panel="compose">3. Note</button>
       <button class="nav-btn" data-panel="machine">4. Printer</button>
     </nav>
-    <a class="topbar-cta" href="https://buildbeyondbelief.com/" target="_blank" rel="noopener">Build Beyond Belief</a>
+    <div class="topbar-end">
+      <button class="nav-btn" type="button" id="open-settings">Settings</button>
+      <a class="topbar-cta" href="https://buildbeyondbelief.com/" target="_blank" rel="noopener">Build Beyond Belief</a>
+    </div>
   </header>
 
-  <div class="app-shell on-home">
-    <aside class="sidebar">
-      <div class="brand">
-        <p class="side-label">Studio</p>
-        <p>Four steps: save how you write, optionally add a picture, type a note, then download a file for a 3D printer that is holding a pen.</p>
+  <dialog id="settings-dialog" class="settings-dialog">
+    <form method="dialog">
+      <h2>Settings</h2>
+      <p class="hint" id="save-status">Saving in this browser…</p>
+      <p class="hint">Letters, stamps, the note, and printer settings stay in this browser. Download a backup before you clear site data or switch computers.</p>
+      <div class="stack" style="gap:8px; margin:16px 0;">
+        <button class="btn" type="button" id="export-project">Download a backup</button>
+        <button class="btn secondary" type="button" id="import-project">Restore from a backup</button>
+        <button class="btn ghost" type="button" id="merge-project">Add a backup without replacing my note</button>
+        <button class="btn danger" type="button" id="reset-all">Erase everything in this browser</button>
       </div>
-      <div class="side-actions">
-        <button class="btn" id="export-project">Download a backup of my work</button>
-        <button class="btn secondary" id="import-project">Restore from a backup file</button>
-        <button class="btn ghost" id="merge-project">Add a backup without replacing my note</button>
-        <button class="btn danger" id="reset-all">Erase everything in this browser</button>
-        <input id="import-file" type="file" accept="application/json,.json" hidden />
-        <p class="hint" id="save-status">Saving in this browser…</p>
-        <p class="hint">Your letters, pictures, note, and printer settings stay in this browser on this device. Download a backup before you clear site data or switch computers.</p>
-      </div>
-    </aside>
+      <input id="import-file" type="file" accept="application/json,.json" hidden />
+      <button class="btn secondary" value="close">Close</button>
+    </form>
+  </dialog>
 
+  <div class="app-shell on-home">
     <main class="main">
       <section class="panel active" id="panel-home">
         <p class="side-label">Home</p>
@@ -95,7 +98,7 @@
           <article class="dash-card">
             <p class="dash-tag">Doodles</p>
             <h3>Draw it yourself</h3>
-            <p>A star, a name, a scribble. The printer follows the same stroke order you drew, like replaying a finger on paper.</p>
+            <p>A smiley, a name, a scribble. The printer follows the same stroke order you drew.</p>
             <div class="paper-stage dash-paper">
               <canvas id="home-doodle" width="420" height="280"></canvas>
             </div>
@@ -107,15 +110,15 @@
           <article class="dash-card dash-wide">
             <p class="dash-tag">Photos into pen lines</p>
             <h3>One picture, many drawing styles</h3>
-            <p>Load a photo or a kid’s drawing. Choose outline, hatch, squiggle, rings, or a single wandering line. Save it as a stamp and plant it on the note.</p>
+            <p>Load a photo. Rings is the default fill — hatch, squiggle, or wander if you want a different look.</p>
             <div class="dash-modes">
               <figure>
                 <canvas id="home-photo" width="220" height="220"></canvas>
                 <figcaption>Photo</figcaption>
               </figure>
               <figure>
-                <canvas id="home-outline" width="220" height="220"></canvas>
-                <figcaption>Outline</figcaption>
+                <canvas id="home-rings" width="220" height="220"></canvas>
+                <figcaption>Rings</figcaption>
               </figure>
               <figure>
                 <canvas id="home-hatch" width="220" height="220"></canvas>
@@ -124,10 +127,6 @@
               <figure>
                 <canvas id="home-squiggle" width="220" height="220"></canvas>
                 <figcaption>Squiggle</figcaption>
-              </figure>
-              <figure>
-                <canvas id="home-rings" width="220" height="220"></canvas>
-                <figcaption>Rings</figcaption>
               </figure>
               <figure>
                 <canvas id="home-spiral" width="220" height="220"></canvas>
@@ -143,7 +142,7 @@
         <div class="card how-card" style="margin-top:28px;">
           <p class="side-label">Then print it</p>
           <ol>
-            <li><strong>Write</strong> your letters (or start from the sample hand).</li>
+            <li><strong>Write</strong> your letters (or start from a sample handwriting).</li>
             <li><strong>Stamps</strong> are optional pictures on the page.</li>
             <li><strong>Note</strong> is where you type and download a print file.</li>
             <li><strong>Printer</strong> is where you pick your 3D printer and run a practice pass with the pen in the air.</li>
@@ -161,17 +160,8 @@
           The printer can only replay paths you draw here — it cannot guess from a photo of letters.
           Draw each character the way you write it (a tablet pen is nicest; a mouse works). Save a few versions of the letters you actually use.
         </p>
-        <div class="card how-card">
-          <p class="side-label">The four steps</p>
-          <ol>
-            <li><strong>Write</strong> — record your letters. The printer copies these paths, in order.</li>
-            <li><strong>Stamps</strong> — optional. Turn a drawing or photo into a small picture the pen can draw on the page.</li>
-            <li><strong>Note</strong> — type a message. Download a print file for the machine, or a picture to preview.</li>
-            <li><strong>Printer</strong> — pick your 3D printer, clip a pen on it, run a practice pass with the pen in the air first.</li>
-          </ol>
-        </div>
         <p class="demo-banner" id="demo-banner-capture">
-          This grid is only letters you draw. Sample hands live on the Note tab, next to Your letters.
+          This grid is only letters you draw. Sample handwriting lives on the Note tab.
         </p>
 
         <div class="row">
@@ -240,102 +230,122 @@
 
       <section class="panel" id="panel-stamps">
         <h2>Stamps</h2>
-        <p class="lede">
-          A stamp is a little picture the pen can draw next to your note — a kid’s doodle, a logo, a shaded photo.
-          Load a photo and pick how to turn it into pen lines, or draw one here. Save it, then plant copies on the Note page.
-        </p>
-        <div class="row">
-          <div class="stack">
-            <label for="stamp-source">Make from</label>
-            <select id="stamp-source">
-              <option value="photo">Photo / scan</option>
-              <option value="doodle">Doodle (draw here)</option>
-            </select>
-          </div>
-          <div class="stack stamp-photo-only">
-            <label>Photo</label>
-            <div class="toolbar">
-              <button class="btn" id="load-stamp-image">Load scan / photo</button>
-              <button class="btn secondary" id="stamp-camera">Camera</button>
-              <input id="stamp-file" type="file" accept="image/*" hidden />
-              <input id="stamp-camera-file" type="file" accept="image/*" capture="environment" hidden />
-            </div>
-          </div>
-          <div class="stack" id="stamp-doodle-tools" hidden>
-            <label>&nbsp;</label>
-            <div class="toolbar">
-              <button class="btn ghost" id="undo-doodle">Undo stroke</button>
-              <button class="btn ghost" id="clear-doodle">Clear</button>
-            </div>
-          </div>
-          <div class="stack stamp-photo-only">
-            <label for="trace-mode">How to turn the photo into pen lines</label>
-            <select id="trace-mode">
-              <option value="outline">Outline — follow the edges (crayon / marker)</option>
-              <option value="centerline">Centerline — a thin line down the middle</option>
-              <option value="scribble">Outline plus scribble fill</option>
-              <option value="spiral">Wander — one line that packs tighter in dark areas</option>
-              <option value="hatch">Hatch — parallel lines, closer in darks</option>
-              <option value="squiggle">Squiggle — wavy rows, closer in darks</option>
-              <option value="rings">Rings — nested circles, closer in darks</option>
-            </select>
-          </div>
-          <div class="stack stamp-photo-only">
-            <label for="trace-threshold" id="trace-threshold-label"><span id="trace-threshold-name">Ink threshold</span> (<span id="trace-threshold-val">145</span>)</label>
-            <input id="trace-threshold" type="range" min="20" max="250" value="145" />
-          </div>
-          <div class="stack stamp-photo-only stamp-shade-only" hidden>
-            <label for="trace-density">Line packing (<span id="trace-density-val">12</span>)</label>
-            <input id="trace-density" type="range" min="1" max="24" value="12" />
-          </div>
-          <div class="stack stamp-photo-only stamp-shade-only" hidden>
-            <label for="trace-shades">Gray steps (<span id="trace-shades-val">32</span>)</label>
-            <input id="trace-shades" type="range" min="2" max="100" value="32" />
-          </div>
-        </div>
-        <details class="more-box stamp-photo-only stamp-binary-only">
-          <summary>Fine-tune the trace</summary>
-          <p class="hint" style="margin:8px 0 0;">Use these if the preview is too broken, too speckled, or too jagged.</p>
+        <p class="lede">A stamp is a little picture you plant on the note. Trace a photo, or draw a doodle. They are separate on purpose.</p>
+        <input type="hidden" id="stamp-source" value="photo" />
+
+        <article class="stamp-block" id="section-photo">
+          <p class="side-label">Simple trace</p>
+          <h3>Photo to pen lines</h3>
+          <p class="hint">Load a picture. Rings is the default — a low-fidelity fill that packs tighter in the darks.</p>
           <div class="row">
             <div class="stack">
-              <label for="trace-join">Connect broken lines (<span id="trace-join-val">1</span>)</label>
-              <input id="trace-join" type="range" min="0" max="8" value="1" />
+              <label>Photo</label>
+              <div class="toolbar">
+                <button class="btn" id="load-stamp-image">Load photo</button>
+                <button class="btn secondary" id="stamp-camera">Camera</button>
+                <input id="stamp-file" type="file" accept="image/*" hidden />
+                <input id="stamp-camera-file" type="file" accept="image/*" capture="environment" hidden />
+              </div>
             </div>
             <div class="stack">
-              <label for="trace-thicken">Thicken marks (<span id="trace-thicken-val">0</span>)</label>
-              <input id="trace-thicken" type="range" min="0" max="5" value="0" />
+              <label for="trace-mode">Simple trace</label>
+              <select id="trace-mode">
+                <option value="rings" selected>Rings</option>
+                <option value="hatch">Hatch</option>
+                <option value="squiggle">Squiggle</option>
+                <option value="spiral">Wander</option>
+                <option value="outline">Outline</option>
+                <option value="centerline">Centerline</option>
+                <option value="scribble">Scribble fill</option>
+              </select>
+            </div>
+            <div class="stack stamp-photo-only">
+              <label for="trace-threshold" id="trace-threshold-label"><span id="trace-threshold-name">Contrast</span> (<span id="trace-threshold-val">145</span>)</label>
+              <input id="trace-threshold" type="range" min="20" max="250" value="145" />
+            </div>
+            <div class="stack stamp-photo-only stamp-shade-only">
+              <label for="trace-density">Line packing (<span id="trace-density-val">12</span>)</label>
+              <input id="trace-density" type="range" min="1" max="24" value="12" />
+            </div>
+            <div class="stack stamp-photo-only stamp-shade-only">
+              <label for="trace-shades">Gray steps (<span id="trace-shades-val">32</span>)</label>
+              <input id="trace-shades" type="range" min="2" max="100" value="32" />
+            </div>
+          </div>
+          <details class="more-box stamp-photo-only stamp-binary-only">
+            <summary>Fine-tune outline traces</summary>
+            <p class="hint" style="margin:8px 0 0;">Use these if Outline / Centerline / Scribble is too broken, speckled, or jagged.</p>
+            <div class="row">
+              <div class="stack">
+                <label for="trace-join">Connect broken lines (<span id="trace-join-val">1</span>)</label>
+                <input id="trace-join" type="range" min="0" max="8" value="1" />
+              </div>
+              <div class="stack">
+                <label for="trace-thicken">Thicken marks (<span id="trace-thicken-val">0</span>)</label>
+                <input id="trace-thicken" type="range" min="0" max="5" value="0" />
+              </div>
+              <div class="stack">
+                <label for="trace-specks">Ignore tiny dots (<span id="trace-specks-val">18</span>)</label>
+                <input id="trace-specks" type="range" min="1" max="120" value="18" />
+              </div>
+              <div class="stack">
+                <label for="trace-smooth">Smooth paths (<span id="trace-smooth-val">8</span>)</label>
+                <input id="trace-smooth" type="range" min="1" max="20" value="8" />
+              </div>
+              <div class="stack stamp-scribble-only" hidden>
+                <label for="trace-scribble">Scribble spacing (<span id="trace-scribble-val">5</span>)</label>
+                <input id="trace-scribble" type="range" min="2" max="20" value="5" />
+              </div>
+            </div>
+          </details>
+          <div class="row" style="margin-top:10px;">
+            <label class="hint"><input type="checkbox" id="trace-invert" /> Invert (treat light as ink)</label>
+            <div class="stack">
+              <label for="stamp-name">Stamp name</label>
+              <input id="stamp-name" type="text" value="photo" />
             </div>
             <div class="stack">
-              <label for="trace-specks">Ignore tiny dots (<span id="trace-specks-val">18</span>)</label>
-              <input id="trace-specks" type="range" min="1" max="120" value="18" />
+              <label>&nbsp;</label>
+              <button class="btn" id="save-stamp">Save photo stamp</button>
+            </div>
+          </div>
+          <div class="paper-stage">
+            <div class="canvas-wrap">
+              <canvas id="stamp-canvas" width="1400" height="700"></canvas>
+            </div>
+          </div>
+          <p class="status" id="stamp-status">Load a photo. Rings turn dark areas into nested circles.</p>
+        </article>
+
+        <article class="stamp-block" id="section-doodle">
+          <p class="side-label">Doodle</p>
+          <h3>Draw it yourself</h3>
+          <p class="hint">Same stroke order you draw, like replaying a finger on paper.</p>
+          <div class="row">
+            <div class="stack" id="stamp-doodle-tools">
+              <label>Drawing</label>
+              <div class="toolbar">
+                <button class="btn ghost" id="undo-doodle">Undo stroke</button>
+                <button class="btn ghost" id="clear-doodle">Clear</button>
+              </div>
             </div>
             <div class="stack">
-              <label for="trace-smooth">Smooth paths (<span id="trace-smooth-val">8</span>)</label>
-              <input id="trace-smooth" type="range" min="1" max="20" value="8" />
+              <label for="doodle-stamp-name">Stamp name</label>
+              <input id="doodle-stamp-name" type="text" value="doodle" />
             </div>
-            <div class="stack stamp-scribble-only" hidden>
-              <label for="trace-scribble">Scribble spacing (<span id="trace-scribble-val">5</span>)</label>
-              <input id="trace-scribble" type="range" min="2" max="20" value="5" />
+            <div class="stack">
+              <label>&nbsp;</label>
+              <button class="btn" id="save-doodle-stamp">Save doodle</button>
             </div>
           </div>
-        </details>
-        <div class="row" style="margin-top:10px;">
-          <label class="hint stamp-photo-only"><input type="checkbox" id="trace-invert" /> Invert (treat light as ink, for a dark photo)</label>
-          <div class="stack">
-            <label for="stamp-name">Stamp name</label>
-            <input id="stamp-name" type="text" value="doodle" />
+          <div class="paper-stage">
+            <div class="canvas-wrap">
+              <canvas id="doodle-canvas" width="1400" height="700"></canvas>
+            </div>
           </div>
-          <div class="stack">
-            <label>&nbsp;</label>
-            <button class="btn" id="save-stamp">Save stamp</button>
-          </div>
-        </div>
-        <div class="paper-stage">
-          <div class="canvas-wrap">
-            <canvas id="stamp-canvas" width="1400" height="700"></canvas>
-          </div>
-        </div>
-        <p class="status" id="stamp-status">Load a photo of a drawing on plain paper. Dark marks become pen paths.</p>
+          <p class="status" id="doodle-status">Draw on the paper. The printer follows the same order.</p>
+        </article>
+
         <h3 style="margin:22px 0 8px;">Saved stamps</h3>
         <p class="hint">Click a stamp to select it, then open Note and click the page to place a copy. Click the same stamp again to delete it.</p>
         <div class="variant-list" id="stamp-list"></div>
@@ -344,15 +354,14 @@
       <section class="panel" id="panel-compose">
         <h2>Note</h2>
         <p class="lede">
-          Type the message you want the pen to write. Pick a sample hand, or Your letters after you draw some under Write.
-          If you saved a whole word like “the”, that drawing is used when Your letters is selected.
+          Type the message. Handwriting is your letters if you have saved any, or a complete sample alphabet.
         </p>
         <p class="demo-banner" id="demo-banner-compose">
-          Using a sample hand. Your captured letters stay on Write — they are not mixed in until you pick Your letters.
+          Using sample handwriting. Pick Your handwriting after you draw some letters.
         </p>
         <div class="row" style="margin-bottom:12px;">
           <div class="stack">
-            <label for="note-font">Hand</label>
+            <label for="note-font">Handwriting</label>
             <select id="note-font"></select>
           </div>
         </div>
@@ -411,7 +420,7 @@
               </div>
             </div>
           </div>
-          <p class="hint" style="margin:10px 0 0;">Select a saved stamp, then click the paper preview below to place it. Drag to move. Scatter copies drops a wiggly row of the same stamp across the lower part of the page.</p>
+          <p class="hint" style="margin:10px 0 0;">Select a saved stamp, then click the paper preview below to place it. Drag to move.</p>
           <div class="variant-list" id="compose-stamp-list"></div>
         </div>
         <p class="missing" id="missing-list"></p>
@@ -419,7 +428,6 @@
           <p class="bounds-status" id="bounds-status">Fits on the paper and on the printer bed</p>
           <div class="toolbar">
             <button class="btn" id="fit-page">Shrink writing to fit the paper</button>
-            <button class="btn secondary" id="nudge-stamps">Slide stamps onto the paper</button>
             <button class="btn ghost" id="clamp-paper">Shrink the writable area to the bed</button>
             <label class="hint"><input type="checkbox" id="auto-fix-export" checked /> Fix overflow when I download</label>
           </div>

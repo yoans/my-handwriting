@@ -148,33 +148,47 @@ a:hover {
 }
 
 .app-shell {
-  display: grid;
-  grid-template-columns: 260px 1fr;
+  display: block;
   min-height: calc(100vh - 68px);
+}
+
+.topbar-end {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.settings-dialog {
+  width: min(420px, calc(100vw - 32px));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  padding: 22px 22px 18px;
+}
+.settings-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+.settings-dialog h2 {
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+}
+
+.stamp-block {
+  margin: 0 0 28px;
+  padding: 18px 18px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
+}
+.stamp-block h3 {
+  margin: 0 0 6px;
 }
 
 .app-shell.on-home {
   grid-template-columns: 1fr;
-}
-
-.app-shell.on-home .sidebar {
-  display: none;
-}
-
-.sidebar {
-  background: var(--color-bg-elevated);
-  border-right: 1px solid var(--color-border);
-  padding: 22px 18px 28px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.brand p {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: 0.9rem;
-  line-height: 1.45;
 }
 
 .side-label {

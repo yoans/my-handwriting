@@ -90,7 +90,8 @@ function collectProject() {
     },
     stampsUi: {
       name: $("stamp-name").value,
-      source: $("stamp-source").value,
+      doodleName: $("doodle-stamp-name")?.value || "doodle",
+      source: $("stamp-source")?.value || "photo",
       mode: $("trace-mode").value,
       threshold: Number($("trace-threshold").value),
       join: Number($("trace-join").value),
@@ -118,9 +119,8 @@ function applyProject(project) {
   fillFontSelect();
   const savedFont = project.compose?.fontId;
   const fontOk = savedFont === CUSTOM_FONT_ID || SAMPLE_FONTS.some((f) => f.id === savedFont);
-  $("note-font").value = fontOk
-    ? savedFont
-    : (hasUserGlyphs(library) ? CUSTOM_FONT_ID : DEFAULT_FONT_ID);
+  if (hasUserGlyphs(library)) $("note-font").value = CUSTOM_FONT_ID;
+  else $("note-font").value = fontOk && savedFont !== CUSTOM_FONT_ID ? savedFont : DEFAULT_FONT_ID;
 
   $("note-text").value = project.compose?.text ?? "";
   if (!$("note-text").value.trim() || $("note-text").value.trim() === "Hi there") {
@@ -140,9 +140,11 @@ function applyProject(project) {
   $("glyph-target").value = project.capture?.glyph || "a";
   $("word-target").value = project.capture?.word || "the";
 
-  $("stamp-name").value = project.stampsUi?.name || "doodle";
-  $("stamp-source").value = project.stampsUi?.source === "doodle" ? "doodle" : "photo";
-  $("trace-mode").value = project.stampsUi?.mode || "outline";
+  $("stamp-name").value = project.stampsUi?.name || "photo";
+  if ($("doodle-stamp-name")) $("doodle-stamp-name").value = project.stampsUi?.doodleName || "doodle";
+  $("stamp-source").value = "photo";
+  const savedMode = project.stampsUi?.mode || "rings";
+  $("trace-mode").value = savedMode;
   $("trace-threshold").value = project.stampsUi?.threshold ?? 145;
   $("trace-join").value = project.stampsUi?.join ?? 1;
   $("trace-thicken").value = project.stampsUi?.thicken ?? 0;
@@ -173,7 +175,7 @@ function fillFontSelect() {
   sel.innerHTML = "";
   const custom = document.createElement("option");
   custom.value = CUSTOM_FONT_ID;
-  custom.textContent = "Your letters";
+  custom.textContent = "Your handwriting";
   sel.appendChild(custom);
   for (const font of SAMPLE_FONTS) {
     const opt = document.createElement("option");
@@ -190,16 +192,16 @@ function syncFontBanners() {
   const compose = $("demo-banner-compose");
   if (capture) {
     capture.hidden = hasUserGlyphs(library);
-    capture.textContent = "This grid is only letters you draw. Sample hands live on the Note tab, next to Your letters.";
+    capture.textContent = "This grid is only letters you draw. Sample handwriting lives on the Note tab.";
   }
   if (compose) {
     if (fontId === CUSTOM_FONT_ID) {
       compose.hidden = hasUserGlyphs(library);
-      compose.textContent = "Your letters is empty until you draw some under Write. Or pick a sample hand above to try a note.";
+      compose.textContent = "No letters saved yet. Draw some under Write, or pick a sample handwriting above.";
     } else {
-      const name = SAMPLE_FONTS.find((f) => f.id === fontId)?.name || "a sample hand";
+      const name = SAMPLE_FONTS.find((f) => f.id === fontId)?.name || "sample handwriting";
       compose.hidden = false;
-      compose.textContent = `Using ${name}. Your captured letters stay on Write — they are not mixed in until you pick Your letters.`;
+      compose.textContent = `Using ${name}. Your captured letters stay on Write — pick Your handwriting to use them.`;
     }
   }
 }
@@ -222,11 +224,9 @@ function goToPanel(name, opts = {}) {
   if (name === "home") renderHomeDashboard();
   if (name === "compose") drawCompose();
   if (name === "stamps") {
-    if (opts.doodle) {
-      $("stamp-source").value = "doodle";
-      syncStampSource();
-    }
     drawStampPreview();
+    drawDoodlePreview();
+    if (opts.doodle) $("section-doodle")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
   if (!opts.fromHash) {
     const hash = `#${name}`;
@@ -701,6 +701,7 @@ function saveCapture() {
   }
   library = loadLibrary();
   strokes = [];
+  if (hasUserGlyphs(library)) $("note-font").value = CUSTOM_FONT_ID;
   renderGrid();
   renderVariants();
   drawCapture();
@@ -718,17 +719,12 @@ function paperFromEvent(canvas, event) {
   };
 }
 
-function doodleMode() {
-  return $("stamp-source").value === "doodle";
-}
-
 function syncTraceControls() {
-  const doodle = doodleMode();
   const mode = $("trace-mode").value;
-  const shade = !doodle && isShadeMode(mode);
-  const scribble = !doodle && !shade && mode === "scribble";
-  document.querySelectorAll(".stamp-binary-only").forEach((el) => { el.hidden = doodle || shade; });
-  document.querySelectorAll(".stamp-shade-only").forEach((el) => { el.hidden = doodle || !shade; });
+  const shade = isShadeMode(mode);
+  const scribble = !shade && mode === "scribble";
+  document.querySelectorAll(".stamp-binary-only").forEach((el) => { el.hidden = shade; });
+  document.querySelectorAll(".stamp-shade-only").forEach((el) => { el.hidden = !shade; });
   document.querySelectorAll(".stamp-scribble-only").forEach((el) => { el.hidden = !scribble; });
   const name = $("trace-threshold-name");
   if (name) name.textContent = shade ? "Contrast" : "Ink threshold";
@@ -750,22 +746,22 @@ function syncTraceControls() {
 }
 
 function syncStampSource() {
-  const doodle = doodleMode();
-  document.querySelectorAll(".stamp-photo-only").forEach((el) => { el.hidden = doodle; });
-  $("stamp-doodle-tools").hidden = !doodle;
   syncTraceControls();
-  if (doodle) {
-    $("stamp-status").textContent = doodleStrokes.length
-      ? `${doodleStrokes.length} stroke${doodleStrokes.length === 1 ? "" : "s"}. Save, then open Note and click the paper to place it.`
-      : "Draw on the paper with a finger, mouse, or tablet pen. The printer will follow the same order you draw.";
-  } else if (lastTrace?.count) {
-    $("stamp-status").textContent = `${lastTrace.count} paths ready. Save, then open Note and click the paper to place it.`;
+  if (lastTrace?.count) {
+    $("stamp-status").textContent = `${lastTrace.count} paths ready. Save the photo stamp, then plant it on Note.`;
   } else {
     $("stamp-status").textContent = isShadeMode($("trace-mode").value)
-      ? "Load a photo. Wander, hatch, squiggle, and rings turn light and dark areas into pen shading."
-      : "Load a photo of a drawing on plain paper. Dark marks become the pen path.";
+      ? "Load a photo. Rings (default), hatch, squiggle, and wander turn darks into pen fills."
+      : "Load a photo. Dark marks become the pen path.";
+  }
+  const ds = $("doodle-status");
+  if (ds) {
+    ds.textContent = doodleStrokes.length
+      ? `${doodleStrokes.length} stroke${doodleStrokes.length === 1 ? "" : "s"}. Save the doodle, then plant it on Note.`
+      : "Draw on the paper. The printer follows the same order.";
   }
   drawStampPreview();
+  drawDoodlePreview();
 }
 
 function doodleInk() {
@@ -790,18 +786,17 @@ function retraceStamp() {
     density: Number($("trace-density").value) || 12,
     shades: Number($("trace-shades").value) || 32,
   });
-  if (!doodleMode()) {
-    drawStampPreview();
-    $("stamp-status").textContent = lastTrace.count
-      ? `${lastTrace.count} paths ready${shade ? ` · ${Number($("trace-shades").value) || 32} gray steps` : ""}. Save, then open Note and click the paper to place it.`
-      : shade
-        ? "No pen lines yet — try raising Contrast, packing lines tighter, or Invert."
-        : "No ink found — try a lower Ink threshold, Invert, or a photo with stronger contrast.";
-  }
+  drawStampPreview();
+  $("stamp-status").textContent = lastTrace.count
+    ? `${lastTrace.count} paths ready${shade ? ` · ${Number($("trace-shades").value) || 32} gray steps` : ""}. Save the photo stamp, then plant it on Note.`
+    : shade
+      ? "No pen lines yet — try raising Contrast, packing lines tighter, or Invert."
+      : "No ink found — try a lower Ink threshold, Invert, or a photo with stronger contrast.";
 }
 
 function drawDoodlePreview() {
-  const canvas = $("stamp-canvas");
+  const canvas = $("doodle-canvas");
+  if (!canvas) return;
   const ctx = canvas.getContext("2d");
   ctx.fillStyle = "#f3ead6";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -833,10 +828,6 @@ function drawDoodlePreview() {
 }
 
 function drawStampPreview() {
-  if (doodleMode()) {
-    drawDoodlePreview();
-    return;
-  }
   const canvas = $("stamp-canvas");
   const ctx = canvas.getContext("2d");
   ctx.fillStyle = "#f3ead6";
@@ -908,9 +899,8 @@ function loadStampFile(file) {
   const img = new Image();
   img.onload = () => {
     stampImage = img;
-    $("stamp-source").value = "photo";
-    if ($("stamp-name").value === "doodle") {
-      $("stamp-name").value = file.name.replace(/\.[^.]+$/, "").slice(0, 40) || "doodle";
+    if ($("stamp-name").value === "doodle" || $("stamp-name").value === "photo") {
+      $("stamp-name").value = file.name.replace(/\.[^.]+$/, "").slice(0, 40) || "photo";
     }
     syncStampSource();
     retraceStamp();
@@ -1042,69 +1032,73 @@ function wireComposeCanvas() {
 }
 
 function wireStampCanvas() {
-  const canvas = $("stamp-canvas");
+  const canvas = $("doodle-canvas");
+  if (!canvas) return;
   canvas.addEventListener("pointerdown", (e) => {
-    if (!doodleMode()) return;
     canvas.setPointerCapture(e.pointerId);
     doodleCurrent = [canvasPoint(canvas, e)];
-    drawStampPreview();
+    drawDoodlePreview();
   });
   canvas.addEventListener("pointermove", (e) => {
     if (!doodleCurrent) return;
     const p = canvasPoint(canvas, e);
     const last = doodleCurrent[doodleCurrent.length - 1];
     if (dist(p, last) >= 1.6) doodleCurrent.push(p);
-    drawStampPreview();
+    drawDoodlePreview();
   });
   const end = () => {
     if (doodleCurrent && doodleCurrent.length > 1) doodleStrokes.push(doodleCurrent);
     doodleCurrent = null;
-    if (doodleMode()) {
-      syncStampSource();
-      autosave();
-    }
+    syncStampSource();
+    autosave();
   };
   canvas.addEventListener("pointerup", end);
   canvas.addEventListener("pointercancel", end);
 }
 
 function saveStamp() {
-  let stamp;
-  if (doodleMode()) {
-    const simplified = doodleStrokes
-      .map((s) => simplifyStroke(s, 1.2))
-      .filter((s) => s.length >= 2);
-    if (!simplified.length) {
-      $("stamp-status").textContent = "Draw a doodle first.";
-      return;
-    }
-    const norm = normalizeStamp(simplified);
-    stamp = {
-      id: `stamp_${Date.now()}`,
-      name: $("stamp-name").value.trim() || "doodle",
-      strokes: norm.strokes,
-      width: norm.width,
-      height: norm.height,
-    };
-  } else {
-    if (!lastTrace?.count) {
-      $("stamp-status").textContent = "Trace a drawing first.";
-      return;
-    }
-    stamp = {
-      id: `stamp_${Date.now()}`,
-      name: $("stamp-name").value.trim() || "doodle",
-      strokes: lastTrace.strokes,
-      width: lastTrace.width,
-      height: lastTrace.height,
-    };
+  if (!lastTrace?.count) {
+    $("stamp-status").textContent = "Trace a photo first.";
+    return;
   }
+  const stamp = {
+    id: `stamp_${Date.now()}`,
+    name: $("stamp-name").value.trim() || "photo",
+    strokes: lastTrace.strokes,
+    width: lastTrace.width,
+    height: lastTrace.height,
+  };
   addStamp(library, stamp);
   library = loadLibrary();
   selectedStampId = stamp.id;
   renderStampLists();
-  $("stamp-status").textContent = `Saved “${stamp.name}”. Open Note, then click the paper to place it.`;
-  syncFontBanners();
+  $("stamp-status").textContent = `Saved “${stamp.name}”. Open Note and click the paper to place it.`;
+  autosave(true);
+}
+
+function saveDoodleStamp() {
+  const simplified = doodleStrokes
+    .map((s) => simplifyStroke(s, 1.2))
+    .filter((s) => s.length >= 2);
+  if (!simplified.length) {
+    const ds = $("doodle-status");
+    if (ds) ds.textContent = "Draw a doodle first.";
+    return;
+  }
+  const norm = normalizeStamp(simplified);
+  const stamp = {
+    id: `stamp_${Date.now()}`,
+    name: $("doodle-stamp-name")?.value.trim() || "doodle",
+    strokes: norm.strokes,
+    width: norm.width,
+    height: norm.height,
+  };
+  addStamp(library, stamp);
+  library = loadLibrary();
+  selectedStampId = stamp.id;
+  renderStampLists();
+  const ds = $("doodle-status");
+  if (ds) ds.textContent = `Saved “${stamp.name}”. Open Note and click the paper to place it.`;
   autosave(true);
 }
 
@@ -1288,6 +1282,7 @@ function init() {
     renderStampLists();
     drawCapture();
     drawStampPreview();
+    drawDoodlePreview();
     drawCompose();
     syncFontBanners();
   });
@@ -1350,7 +1345,7 @@ function init() {
     $(id).addEventListener("change", () => run(true));
   });
   $("save-stamp").addEventListener("click", saveStamp);
-  $("stamp-source").addEventListener("change", () => { syncStampSource(); autosave(); });
+  $("save-doodle-stamp")?.addEventListener("click", saveDoodleStamp);
   $("undo-doodle").addEventListener("click", () => {
     doodleStrokes.pop();
     doodleCurrent = null;
@@ -1386,6 +1381,7 @@ function init() {
     persistPlacements();
   });
   $("stamp-name").addEventListener("input", () => autosave());
+  $("doodle-stamp-name")?.addEventListener("input", () => autosave());
   $("fun-run-count").addEventListener("input", () => autosave());
   $("stamp-size").addEventListener("change", () => {
     if (selectedPlacement >= 0 && placements[selectedPlacement]) {
@@ -1401,11 +1397,6 @@ function init() {
     const out = shrinkToFitPage();
     setStatus(out.changed ? `Letter height is now ${out.xHeight.toFixed(2)} mm so the note stays on the paper.` : "Already fits on the paper.");
     autosave();
-  });
-  $("nudge-stamps").addEventListener("click", () => {
-    const n = nudgeStampsOntoPage();
-    persistPlacements();
-    setStatus(n ? `Moved ${n} stamp${n === 1 ? "" : "s"} onto the page.` : "Stamps are already on the page.");
   });
   $("clamp-paper").addEventListener("click", () => {
     clampPaperToBed();
@@ -1434,6 +1425,7 @@ function init() {
     download("calibration-20mm.gcode", calibrationSquareGcode(machine).gcode);
   });
 
+  $("open-settings")?.addEventListener("click", () => $("settings-dialog")?.showModal());
   $("export-project").addEventListener("click", async () => {
     const result = await persistProject(collectProject());
     updateSaveStatus(result);
@@ -1496,7 +1488,7 @@ function init() {
     if (e.target.matches("input, textarea")) return;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
       e.preventDefault();
-      if ($("panel-stamps").classList.contains("active") && doodleMode()) {
+      if ($("panel-stamps").classList.contains("active")) {
         doodleStrokes.pop();
         doodleCurrent = null;
         syncStampSource();

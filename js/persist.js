@@ -37,9 +37,10 @@ export function emptyProject() {
       strokes: [],
     },
     stampsUi: {
-      name: "doodle",
+      name: "photo",
+      doodleName: "doodle",
       source: "photo",
-      mode: "outline",
+      mode: "rings",
       threshold: 145,
       join: 1,
       thicken: 0,
