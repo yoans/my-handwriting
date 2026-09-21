@@ -271,8 +271,8 @@ function setStatus(msg) {
   $("capture-status").textContent = msg;
 }
 
-function download(filename, text, mime = "text/plain") {
-  const blob = new Blob([text], { type: mime });
+function download(filename, data, mime = "text/plain") {
+  const blob = data instanceof Blob ? data : new Blob([data], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -515,6 +515,8 @@ function drawCompose() {
   const packed = composeStrokes();
   lastCompose = {
     strokes: packed.strokes,
+    letterStrokes: packed.result.strokes,
+    stampStrokes: packed.stampStrokes,
     missing: packed.result.missing,
     bounds: packed.bounds,
     report: packed.report,
@@ -1203,12 +1205,81 @@ function readMachineForm() {
   autosave();
 }
 
-function exportNote(dryRun) {
+function paperBox() {
+  return {
+    minX: 0,
+    minY: 0,
+    maxX: Number(machine.paperWidth) || 170,
+    maxY: Number(machine.paperHeight) || 220,
+    width: Number(machine.paperWidth) || 170,
+    height: Number(machine.paperHeight) || 220,
+  };
+}
+
+function ensureNoteStrokes() {
   drawCompose();
   if (!lastCompose.strokes.length) {
     alert("Nothing to download yet. Save some letters under Write, or add a stamp, then come back here.");
-    return;
+    return false;
   }
+  return true;
+}
+
+function renderNotePng() {
+  const paper = paperBox();
+  const pxPerMm = 8;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(8, Math.round(paper.width * pxPerMm));
+  canvas.height = Math.max(8, Math.round(paper.height * pxPerMm));
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#f3ead6";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const paint = (strokeList, color, mm) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = Math.max(1, mm * pxPerMm);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    for (const stroke of strokeList || []) {
+      if (stroke.length < 2) continue;
+      ctx.beginPath();
+      ctx.moveTo(stroke[0].x * pxPerMm, stroke[0].y * pxPerMm);
+      for (let i = 1; i < stroke.length; i++) ctx.lineTo(stroke[i].x * pxPerMm, stroke[i].y * pxPerMm);
+      ctx.stroke();
+    }
+  };
+  paint(lastCompose.letterStrokes || lastCompose.strokes, "#1c1712", 0.35);
+  paint(lastCompose.stampStrokes, "#5a2c24", 0.32);
+  return canvas;
+}
+
+function exportPng() {
+  if (!ensureNoteStrokes()) return;
+  renderNotePng().toBlob((blob) => {
+    if (!blob) {
+      alert("Could not make a PNG in this browser.");
+      return;
+    }
+    download("note.png", blob, "image/png");
+    setStatus("Downloaded note.png");
+  }, "image/png");
+}
+
+function exportSvg() {
+  if (!ensureNoteStrokes()) return;
+  const paper = paperBox();
+  const svg = strokesToSvg(lastCompose.strokes, {
+    width: Math.round(paper.width * 8),
+    height: Math.round(paper.height * 8),
+    strokeWidth: 0.35,
+    paper: "#f3ead6",
+    box: paper,
+  });
+  download("note.svg", svg, "image/svg+xml");
+  setStatus("Downloaded note.svg");
+}
+
+function exportNote(dryRun) {
+  if (!ensureNoteStrokes()) return;
   let strokes = lastCompose.strokes;
   let report = lastCompose.report || analyzeBounds(strokes, machine);
   if (!report.ok) {
@@ -1391,6 +1462,8 @@ function init() {
       autosave();
     }
   });
+  $("export-png").addEventListener("click", exportPng);
+  $("export-svg").addEventListener("click", exportSvg);
   $("export-gcode").addEventListener("click", () => exportNote(false));
   $("export-dry").addEventListener("click", () => exportNote(true));
   $("fit-page").addEventListener("click", () => {
@@ -1404,10 +1477,6 @@ function init() {
     setStatus("Writable area clipped to the bed.");
   });
   $("auto-fix-export").addEventListener("change", () => autosave());
-  $("export-svg").addEventListener("click", () => {
-    drawCompose();
-    download("note.svg", strokesToSvg(lastCompose.strokes), "image/svg+xml");
-  });
 
   $("preset").addEventListener("change", () => {
     const p = PRESETS[$("preset").value];

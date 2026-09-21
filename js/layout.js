@@ -227,12 +227,20 @@ export function normalizeStrokes(strokes, guides) {
   return { strokes: norm, width, bounds: b };
 }
 
-export function strokesToSvg(strokes, { width = 800, height = 500, strokeWidth = 1.6, paper = "#f3ead6" } = {}) {
-  const b = boundsOfStrokes(strokes);
-  const pad = 12;
-  const vbW = Math.max(b.width + pad * 2, 40);
-  const vbH = Math.max(b.height + pad * 2, 40);
-  const vb = `${(b.minX - pad).toFixed(2)} ${(b.minY - pad).toFixed(2)} ${vbW.toFixed(2)} ${vbH.toFixed(2)}`;
+export function strokesToSvg(strokes, {
+  width = 800,
+  height = 500,
+  strokeWidth = 1.6,
+  paper = "#f3ead6",
+  box = null,
+} = {}) {
+  const b = box || boundsOfStrokes(strokes);
+  const pad = box ? 0 : 12;
+  const minX = (b.minX ?? 0) - pad;
+  const minY = (b.minY ?? 0) - pad;
+  const vbW = Math.max((b.width ?? b.maxX - b.minX) + pad * 2, 40);
+  const vbH = Math.max((b.height ?? b.maxY - b.minY) + pad * 2, 40);
+  const vb = `${minX.toFixed(2)} ${minY.toFixed(2)} ${vbW.toFixed(2)} ${vbH.toFixed(2)}`;
   const paths = strokes.map((stroke) => {
     if (!stroke.length) return "";
     const d = stroke.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(" ");
