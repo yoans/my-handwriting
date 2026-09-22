@@ -1098,25 +1098,30 @@ function wireStampCanvas() {
   const canvas = $("doodle-canvas");
   if (!canvas) return;
   canvas.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    e.preventDefault();
     canvas.setPointerCapture(e.pointerId);
     doodleCurrent = [canvasPoint(canvas, e)];
     drawDoodlePreview();
-  });
+  }, { passive: false });
   canvas.addEventListener("pointermove", (e) => {
     if (!doodleCurrent) return;
+    e.preventDefault();
     const p = canvasPoint(canvas, e);
     const last = doodleCurrent[doodleCurrent.length - 1];
     if (dist(p, last) >= 1.6) doodleCurrent.push(p);
     drawDoodlePreview();
-  });
-  const end = () => {
+  }, { passive: false });
+  const end = (e) => {
+    if (e) e.preventDefault();
     if (doodleCurrent && doodleCurrent.length > 1) doodleStrokes.push(doodleCurrent);
     doodleCurrent = null;
     syncStampSource();
     autosave();
   };
-  canvas.addEventListener("pointerup", end);
-  canvas.addEventListener("pointercancel", end);
+  canvas.addEventListener("pointerup", end, { passive: false });
+  canvas.addEventListener("pointercancel", end, { passive: false });
+  canvas.addEventListener("touchstart", (e) => e.preventDefault(), { passive: false });
 }
 
 function saveStamp() {
@@ -1168,25 +1173,30 @@ function saveDoodleStamp() {
 function wireCapture() {
   const canvas = $("capture-canvas");
   canvas.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    e.preventDefault();
     canvas.setPointerCapture(e.pointerId);
     currentStroke = [canvasPoint(canvas, e)];
     drawCapture();
-  });
+  }, { passive: false });
   canvas.addEventListener("pointermove", (e) => {
     if (!currentStroke) return;
+    e.preventDefault();
     const p = canvasPoint(canvas, e);
     const last = currentStroke[currentStroke.length - 1];
     if (dist(p, last) >= 1.6) currentStroke.push(p);
     drawCapture();
-  });
-  const end = () => {
+  }, { passive: false });
+  const end = (e) => {
+    if (e) e.preventDefault();
     if (currentStroke && currentStroke.length > 1) strokes.push(currentStroke);
     currentStroke = null;
     drawCapture();
     autosave();
   };
-  canvas.addEventListener("pointerup", end);
-  canvas.addEventListener("pointercancel", end);
+  canvas.addEventListener("pointerup", end, { passive: false });
+  canvas.addEventListener("pointercancel", end, { passive: false });
+  canvas.addEventListener("touchstart", (e) => e.preventDefault(), { passive: false });
 }
 
 function isA1() {

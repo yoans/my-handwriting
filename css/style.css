@@ -432,6 +432,12 @@ textarea {
   border: 1px solid #d7c9a8;
 }
 
+.canvas-wrap.draw-surface {
+  touch-action: none;
+  -ms-touch-action: none;
+  overscroll-behavior: none;
+}
+
 #capture-canvas,
 #compose-canvas,
 #doodle-canvas,
@@ -440,7 +446,10 @@ textarea {
   width: 100%;
   height: auto;
   touch-action: none;
+  -ms-touch-action: none;
   cursor: crosshair;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 #compose-canvas { scroll-margin-top: 150px; }
