@@ -130,6 +130,7 @@ export function layoutText(library, text, options) {
   let y = marginTop + xHeightMm * 1.7;
   const allStrokes = [];
   const missing = new Set();
+  const gaps = [];
   let prev = null;
   const band = xHeightMm * 0.05;
   const baseGap = xHeightMm * tracking;
@@ -173,8 +174,22 @@ export function layoutText(library, text, options) {
     }
 
     if (!glyph) {
-      missing.add(token.ch || token.word);
-      x += xHeightMm * 0.7;
+      const label = token.ch || token.word;
+      missing.add(label);
+      const slotW = xHeightMm * (token.type === "word" ? Math.max(1.2, label.length * 0.55) : 0.7);
+      const slotH = xHeightMm * 1.35;
+      if (x > marginLeft && x + slotW > maxWidth) {
+        y += xHeightMm * lineHeight;
+        startLine();
+      }
+      gaps.push({
+        label,
+        x,
+        y: y - xHeightMm * 1.05,
+        w: slotW,
+        h: slotH,
+      });
+      x += slotW + baseGap;
       prev = null;
       continue;
     }
@@ -210,8 +225,31 @@ export function layoutText(library, text, options) {
   return {
     strokes: allStrokes,
     missing: [...missing],
+    gaps,
     bounds: boundsOfStrokes(allStrokes),
   };
+}
+
+/** Characters (and whole words) in `text` that the user's library cannot draw. */
+export function missingForText(library, text) {
+  const needed = new Set();
+  let i = 0;
+  while (i < text.length) {
+    const ch = text[i];
+    if (ch === "\r" || ch === "\n" || ch === " ") { i += 1; continue; }
+    const word = longestWordMatch(library, text, i);
+    if (word && word.length > 1) {
+      i += word.length;
+      continue;
+    }
+    const has =
+      (library.glyphs?.[ch]?.length) ||
+      (ch !== ch.toLowerCase() && library.glyphs?.[ch.toLowerCase()]?.length) ||
+      (ch !== ch.toUpperCase() && library.glyphs?.[ch.toUpperCase()]?.length);
+    if (!has) needed.add(ch);
+    i += 1;
+  }
+  return [...needed];
 }
 
 /** Convert canvas pixel strokes into normalized glyph space using guide positions. */

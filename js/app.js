@@ -4,7 +4,7 @@ import {
   loadMachine, saveMachine, PRESETS, DEFAULT_MACHINE,
 } from "./library.js";
 import { dist, simplifyStroke, boundsOfStrokes, fitStrokesToBox } from "./geometry.js";
-import { layoutText, normalizeStrokes, strokesToSvg } from "./layout.js";
+import { layoutText, normalizeStrokes, strokesToSvg, missingForText } from "./layout.js";
 import { strokesToGcode, calibrationSquareGcode, analyzeBounds } from "./gcode.js";
 import { imageDataToStamp, rasterToImageData, normalizeStamp, isShadeMode } from "./trace.js";
 import { placementsToStrokes, funRunPlacements, hitTestPlacement } from "./stamps.js";
@@ -260,6 +260,10 @@ function goToPanel(name, opts = {}) {
   }
   if (name === "home") renderHomeDashboard();
   if (name === "compose") drawCompose();
+  if (name === "capture") {
+    renderGrid();
+    renderNeededHint();
+  }
   if (name === "stamps") {
     if (opts.doodle) setStampTab("doodle");
     else syncStampTab();
@@ -531,12 +535,35 @@ function updateBoundsUi(report, missing) {
   const status = $("bounds-status");
   const bar = $("bounds-bar");
   const parts = [];
-  if (missing?.length) parts.push(`Missing letters (save them under Your handwriting): ${missing.join(" ")}`);
   if (lastCompose.strokes.length) {
     parts.push(`${lastCompose.strokes.length} strokes · ${lastCompose.bounds.width.toFixed(0)} × ${lastCompose.bounds.height.toFixed(0)} mm`);
     if (placements.length) parts.push(`${placements.length} stamp${placements.length === 1 ? "" : "s"}`);
-  } else parts.push("Nothing to draw yet. Save letters under Your handwriting, or add a stamp.");
-  miss.textContent = parts.join(" · ");
+  } else if (!missing?.length) {
+    parts.push("Nothing to draw yet. Save letters under Your handwriting, or add a stamp.");
+  }
+  miss.replaceChildren();
+  if (missing?.length) {
+    const lead = document.createElement("span");
+    lead.textContent = "Still need for this note: ";
+    miss.appendChild(lead);
+    for (const ch of missing) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "missing-chip";
+      btn.textContent = ch === " " ? "␣" : ch;
+      btn.title = `Draw “${ch}” under Your handwriting`;
+      btn.addEventListener("click", () => goCaptureChar(ch));
+      miss.appendChild(btn);
+    }
+  } else if (parts.length) {
+    miss.textContent = parts.join(" · ");
+  }
+  if (parts.length && missing?.length) {
+    const meta = document.createElement("span");
+    meta.className = "missing-meta";
+    meta.textContent = ` · ${parts.join(" · ")}`;
+    miss.appendChild(meta);
+  }
   if (!bar || !status) return;
   if (!report || report.empty) {
     bar.dataset.state = "ok";
@@ -545,6 +572,51 @@ function updateBoundsUi(report, missing) {
   }
   bar.dataset.state = report.ok ? "ok" : "bad";
   status.textContent = report.ok ? "Fits on the paper and on the printer bed" : report.summary;
+}
+
+function goCaptureChar(ch) {
+  if (typeof ch === "string" && ch.length === 1) {
+    $("glyph-target").value = ch;
+    $("capture-mode").value = "glyph";
+  } else if (typeof ch === "string" && ch.length > 1) {
+    $("word-target").value = ch;
+    $("capture-mode").value = "word";
+  }
+  syncMode();
+  renderGrid();
+  renderVariants();
+  goToPanel("capture");
+  $("capture-canvas")?.scrollIntoView({ block: "center" });
+}
+
+/** Letters in the note that Your handwriting cannot draw yet. */
+function noteMissingChars() {
+  const hand = composeLibrary(library, CUSTOM_FONT_ID);
+  return missingForText(hand, $("note-text")?.value || "");
+}
+
+function renderNeededHint() {
+  const el = $("needed-list");
+  if (!el) return;
+  const needed = noteMissingChars();
+  el.replaceChildren();
+  if (!needed.length) {
+    el.hidden = true;
+    return;
+  }
+  el.hidden = false;
+  const lead = document.createElement("span");
+  lead.textContent = "In your note, still missing: ";
+  el.appendChild(lead);
+  for (const ch of needed) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "missing-chip";
+    btn.textContent = ch === " " ? "␣" : ch;
+    btn.title = `Select “${ch}” to draw`;
+    btn.addEventListener("click", () => goCaptureChar(ch));
+    el.appendChild(btn);
+  }
 }
 
 function drawCompose() {
@@ -567,6 +639,7 @@ function drawCompose() {
     letterStrokes: packed.result.strokes,
     stampStrokes: packed.stampStrokes,
     missing: packed.result.missing,
+    gaps: packed.result.gaps || [],
     bounds: packed.bounds,
     report: packed.report,
   };
@@ -607,6 +680,25 @@ function drawCompose() {
   drawInk(packed.result.strokes, "#1c1712", Math.max(1.4, scale * 0.35));
   drawInk(packed.stampStrokes, "#5a2c24", Math.max(1.2, scale * 0.32));
 
+  for (const gap of packed.result.gaps || []) {
+    const gx = ox + gap.x * scale;
+    const gy = oy + gap.y * scale;
+    const gw = gap.w * scale;
+    const gh = gap.h * scale;
+    ctx.fillStyle = "rgba(244, 63, 94, 0.12)";
+    ctx.fillRect(gx, gy, gw, gh);
+    ctx.strokeStyle = "#e11d48";
+    ctx.lineWidth = Math.max(1.2, scale * 0.18);
+    ctx.setLineDash([4, 3]);
+    ctx.strokeRect(gx, gy, gw, gh);
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#be123c";
+    ctx.font = `600 ${Math.max(11, Math.min(gh * 0.72, gw * 0.9))}px 'Segoe UI', system-ui, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(gap.label, gx + gw / 2, gy + gh / 2);
+  }
+
   if (selectedPlacement >= 0 && placements[selectedPlacement]) {
     const p = placements[selectedPlacement];
     const half = (p.sizeMm || 28) / 2;
@@ -621,22 +713,26 @@ function drawCompose() {
     ctx.setLineDash([]);
   }
 
-  updateBoundsUi(packed.report, packed.result.missing);
+  updateBoundsUi(packed.report, noteMissingChars());
+  renderNeededHint();
 }
 
 function renderGrid() {
   const grid = $("glyph-grid");
   grid.innerHTML = "";
   const current = $("glyph-target").value;
+  const needed = new Set(noteMissingChars());
   for (const ch of CHARSET) {
     const btn = document.createElement("button");
     btn.className = "glyph-cell";
     const n = glyphCount(library, ch);
     if (n >= 2) btn.classList.add("has-many");
     else if (n === 1) btn.classList.add("has-one");
+    if (needed.has(ch) && n === 0) btn.classList.add("needed");
     if (ch === current) btn.classList.add("active");
     btn.type = "button";
     btn.textContent = ch === " " ? "␣" : ch;
+    if (needed.has(ch) && n === 0) btn.title = "Used in your note — not captured yet";
     const count = document.createElement("span");
     count.className = "count";
     count.textContent = n || "";
@@ -650,6 +746,7 @@ function renderGrid() {
     });
     grid.appendChild(btn);
   }
+  renderNeededHint();
 }
 
 function drawThumb(glyph) {
@@ -1462,6 +1559,7 @@ function init() {
 
   ["note-text", "x-height", "line-height", "tracking", "word-space", "seed", "jitter"].forEach((id) => {
     $(id).addEventListener("input", () => {
+      if (id === "note-text") renderGrid();
       syncComposeLayoutLabels();
       drawCompose();
       autosave();
