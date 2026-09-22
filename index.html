@@ -361,8 +361,9 @@
         </article>
 
         <h3 style="margin:22px 0 8px;">Saved stamps</h3>
-        <p class="hint">Click a stamp to select it, then open Note and click the page to place a copy. Click the same stamp again to delete it.</p>
+        <p class="hint">Select a stamp, then open Make a note and tap the paper to place a copy. Deleting a saved stamp also removes its copies from the note.</p>
         <div class="variant-list" id="stamp-list"></div>
+        <button class="btn secondary" type="button" id="delete-saved-stamp" disabled>Delete selected saved stamp</button>
       </section>
 
       <section class="panel" id="panel-compose">
@@ -388,24 +389,32 @@
           <div class="row">
             <div class="stack grow">
               <label for="x-height">Letter size <span class="val" id="x-height-val">4.5</span> mm</label>
-              <input id="x-height" type="range" min="2" max="12" step="0.1" value="4.5" />
+              <input id="x-height" type="range" min="1.2" max="12" step="0.1" value="4.5" aria-describedby="letter-size-help" />
+              <small class="hint" id="letter-size-help">Height of small letters like a and x; capitals are taller.</small>
             </div>
             <div class="stack grow">
               <label for="line-height">Line spacing <span class="val" id="line-height-val">3.0</span>×</label>
-              <input id="line-height" type="range" min="1.6" max="4.5" step="0.05" value="3" />
+              <input id="line-height" type="range" min="1.6" max="4.5" step="0.05" value="3" aria-describedby="line-spacing-help" />
+              <small class="hint" id="line-spacing-help"></small>
             </div>
           </div>
           <div class="row">
             <div class="stack grow">
               <label for="tracking">Letter spacing <span class="val" id="tracking-val">0.28</span>×</label>
-              <input id="tracking" type="range" min="0" max="0.8" step="0.01" value="0.28" />
+              <input id="tracking" type="range" min="0" max="0.8" step="0.01" value="0.28" aria-describedby="letter-spacing-help" />
+              <small class="hint" id="letter-spacing-help"></small>
             </div>
             <div class="stack grow">
               <label for="word-space">Word spacing <span class="val" id="word-space-val">0.95</span>×</label>
-              <input id="word-space" type="range" min="0.2" max="2.2" step="0.05" value="0.95" />
+              <input id="word-space" type="range" min="0.2" max="2.2" step="0.01" value="0.95" aria-describedby="word-spacing-help" />
+              <small class="hint" id="word-spacing-help"></small>
             </div>
           </div>
-          <p class="hint" style="margin:8px 0 0;">Spacing is relative to letter size. Drag right if letters feel bunched; left if they feel sparse.</p>
+          <p class="hint" style="margin:8px 0 12px;">Drag right for larger writing or more space. The preview updates as you move. Spacing scales with letter size; saved whole words keep their original internal spacing.</p>
+          <div class="toolbar">
+            <button class="btn secondary" type="button" id="reset-writing-layout">Reset size &amp; spacing</button>
+            <button class="btn ghost" type="button" id="show-note-preview">See preview ↓</button>
+          </div>
           <details class="more-box" style="margin-top:12px;">
             <summary>Variation (how messy it looks)</summary>
             <div class="row">
@@ -424,7 +433,7 @@
 
         <div class="paper-stage">
           <div class="canvas-wrap">
-            <canvas id="compose-canvas" width="1400" height="900" role="img" aria-label="Preview of your message and any placed stamps."></canvas>
+            <canvas id="compose-canvas" width="1400" height="1400" role="img" tabindex="-1" aria-label="Preview of your message and any placed stamps."></canvas>
           </div>
         </div>
         <div class="toolbar" style="margin-top:14px;">
@@ -449,10 +458,11 @@
               <div class="toolbar">
                 <button class="btn" id="fun-run">Scatter copies across the page</button>
                 <button class="btn ghost" id="clear-stamps">Clear stamps on page</button>
+                <button class="btn secondary" id="remove-placed-stamp" disabled>Remove selected copy</button>
               </div>
             </div>
           </div>
-          <p class="hint" style="margin:10px 0 0;">Select a saved stamp, then click the paper preview above to place it. Drag to move.</p>
+          <p class="hint" style="margin:10px 0 0;">Select a saved stamp, then tap the paper preview above to place it. Tap an existing copy to select it; drag to move or use Remove selected copy.</p>
           <div class="variant-list" id="compose-stamp-list"></div>
         </div>
         <p class="status" id="compose-status" role="status"></p>

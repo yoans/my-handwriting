@@ -283,6 +283,8 @@ a:hover {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 [hidden] { display: none !important; }
@@ -306,6 +308,10 @@ textarea {
   border-radius: var(--radius-sm);
   padding: 8px 10px;
 }
+
+input, select { max-width: 100%; }
+input[type="range"] { min-height: 44px; padding-inline: 0; accent-color: #22d3ee; }
+.settings-dialog { max-height: calc(100dvh - 32px); overflow-y: auto; }
 
 input:focus,
 select:focus,
@@ -385,6 +391,9 @@ textarea {
 }
 
 .more-box summary::-webkit-details-marker { display: none; }
+.more-box summary::before { content: "+ "; }
+.more-box[open] summary::before { content: "− "; }
+.compose-layout .row { align-items: start; margin-bottom: 12px; }
 
 .compose-layout .stack.grow {
   flex: 1 1 200px;
@@ -425,12 +434,21 @@ textarea {
 
 #capture-canvas,
 #compose-canvas,
+#doodle-canvas,
 #stamp-canvas {
   display: block;
   width: 100%;
   height: auto;
   touch-action: none;
   cursor: crosshair;
+}
+
+#compose-canvas { scroll-margin-top: 150px; }
+#compose-canvas[data-interactive="false"], #stamp-canvas { touch-action: pan-y; }
+
+@media (max-width: 560px) {
+  input, select, textarea { font-size: 16px; }
+  .paper-stage { padding: 8px; }
 }
 
 .guide-legend {

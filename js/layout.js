@@ -10,6 +10,7 @@ function isBoundary(ch) {
 }
 
 function longestWordMatch(library, text, i) {
+  if (i > 0 && !isBoundary(text[i - 1])) return null;
   let best = null;
   for (const word of Object.keys(library.words)) {
     if (!library.words[word]?.length) continue;
@@ -192,7 +193,7 @@ export function layoutText(library, text, options) {
     }
 
     b = boundsOfStrokes(placed);
-    if (prev && b.maxX > maxWidth) {
+    if (x > marginLeft && b.maxX > maxWidth) {
       y += xHeightMm * lineHeight;
       startLine();
       placed = placeGlyphAt(glyph, 0, y, scale, jitter, rand);

@@ -64,11 +64,9 @@ function migrateShadeDensity(ui = {}) {
   return Math.max(1, Math.min(24, d));
 }
 
-function migrateComposeNumber(value, nextDefault, oldDefault) {
+function composeNumber(value, fallback) {
   const n = Number(value);
-  if (!Number.isFinite(n)) return nextDefault;
-  if (Math.abs(n - oldDefault) < 1e-6) return nextDefault;
-  return n;
+  return value == null || value === "" || !Number.isFinite(n) ? fallback : n;
 }
 
 function syncComposeLayoutLabels() {
@@ -86,6 +84,16 @@ function syncComposeLayoutLabels() {
     const n = Number(input.value);
     label.textContent = Number.isFinite(n) ? n.toFixed(digits) : input.value;
   }
+  const size = Number($("x-height").value);
+  const line = size * Number($("line-height").value);
+  const letter = size * Number($("tracking").value);
+  const word = letter + size * Number($("word-space").value);
+  $("line-spacing-help").textContent = `${line.toFixed(1)} mm between writing baselines.`;
+  $("letter-spacing-help").textContent = `About ${letter.toFixed(1)} mm between letter strokes. Letters are fitted automatically.`;
+  $("word-spacing-help").textContent = `${word.toFixed(1)} mm between words, including letter spacing.`;
+  for (const [id, value] of [["x-height", size], ["line-height", line], ["tracking", letter], ["word-space", word]]) {
+    $(id).setAttribute("aria-valuetext", `${value.toFixed(1)} millimeters`);
+  }
 }
 
 function collectProject() {
@@ -97,7 +105,7 @@ function collectProject() {
       text: $("note-text").value,
       xHeight: Number($("x-height").value) || 4.5,
       lineHeight: Number($("line-height").value) || 3,
-      tracking: Number($("tracking").value) || 0.28,
+      tracking: composeNumber($("tracking").value, 0.28),
       wordSpace: Number($("word-space").value) || 0.95,
       seed: Number($("seed").value) || 7,
       jitter: Number($("jitter").value) || 0,
@@ -143,17 +151,16 @@ function applyProject(project) {
   fillFontSelect();
   const savedFont = project.compose?.fontId;
   const fontOk = savedFont === CUSTOM_FONT_ID || SAMPLE_FONTS.some((f) => f.id === savedFont);
-  if (hasUserGlyphs(library)) $("note-font").value = CUSTOM_FONT_ID;
-  else $("note-font").value = fontOk && savedFont !== CUSTOM_FONT_ID ? savedFont : DEFAULT_FONT_ID;
+  $("note-font").value = fontOk ? savedFont : hasUserGlyphs(library) ? CUSTOM_FONT_ID : DEFAULT_FONT_ID;
 
   $("note-text").value = project.compose?.text ?? "";
-  if (!$("note-text").value.trim() || $("note-text").value.trim() === "Hi there") {
+  if (!project.savedAt && !$("note-text").value.trim()) {
     $("note-text").value = SAMPLE_NOTE;
   }
-  $("x-height").value = migrateComposeNumber(project.compose?.xHeight, 4.5, 3.2);
-  $("line-height").value = migrateComposeNumber(project.compose?.lineHeight, 3, 2.6);
-  $("tracking").value = migrateComposeNumber(project.compose?.tracking, 0.28, 0.14);
-  $("word-space").value = migrateComposeNumber(project.compose?.wordSpace, 0.95, 0.42);
+  $("x-height").value = composeNumber(project.compose?.xHeight, 4.5);
+  $("line-height").value = composeNumber(project.compose?.lineHeight, 3);
+  $("tracking").value = composeNumber(project.compose?.tracking, 0.28);
+  $("word-space").value = composeNumber(project.compose?.wordSpace, 0.95);
   $("seed").value = project.compose?.seed ?? 7;
   $("jitter").value = project.compose?.jitter ?? 55;
   syncComposeLayoutLabels();
@@ -402,7 +409,7 @@ function composeLayoutOptions(xHeightMm) {
   const paperW = Number(machine.paperWidth) || 170;
   return {
     xHeightMm: xh,
-    tracking: Number($("tracking").value) || 0.28,
+    tracking: composeNumber($("tracking").value, 0.28),
     wordSpace: Number($("word-space").value) || 0.95,
     lineHeight: Number($("line-height").value) || 3,
     maxWidth: Math.max(paperW - PAGE_MARGIN, 20),
@@ -483,7 +490,7 @@ function clampPaperToBed() {
 function shrinkToFitPage() {
   const moved = nudgeStampsOntoPage();
   const current = Number($("x-height").value) || 4.5;
-  const minH = 1.2;
+  const minH = Number($("x-height").min);
   const trial = (xh) => composeStrokes(xh).report;
   if (boundsFit(trial(current))) {
     if (moved) persistPlacements();
@@ -511,7 +518,8 @@ function shrinkToFitPage() {
     if (boundsFit(trial(mid))) lo = mid;
     else hi = mid;
   }
-  $("x-height").value = lo.toFixed(1);
+  // Round down so the last line cannot overflow again through rounding.
+  $("x-height").value = (Math.floor(lo * 10) / 10).toFixed(1);
   syncComposeLayoutLabels();
   persistPlacements();
   drawCompose();
@@ -541,6 +549,13 @@ function updateBoundsUi(report, missing) {
 
 function drawCompose() {
   const canvas = $("compose-canvas");
+  canvas.dataset.interactive = Boolean(library.stamps?.length).toString();
+  $("remove-placed-stamp").disabled = !placements[selectedPlacement];
+  // Match the paper instead of squeezing it into a landscape canvas.
+  const previewHeight = Math.round(1320 * machine.paperHeight / machine.paperWidth + 80);
+  if (Number.isFinite(previewHeight) && previewHeight > 80 && previewHeight <= 6000 && canvas.height !== previewHeight) {
+    canvas.height = previewHeight;
+  }
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "#f3ead6";
@@ -967,6 +982,7 @@ function loadStampFile(file) {
 }
 
 function renderStampLists() {
+  $("delete-saved-stamp").disabled = !library.stamps?.length;
   const makeThumb = (stamp, onClick, selected) => {
     const btn = document.createElement("button");
     btn.className = "variant-thumb" + (selected ? " selected" : "");
@@ -1011,7 +1027,7 @@ function renderStampLists() {
   const stamps = library.stamps || [];
   if (!stamps.length) {
     box.innerHTML = `<p class="hint">No stamps yet. Load a photo or draw one above, then save.</p>`;
-    composeBox.innerHTML = `<p class="hint">Save a stamp first, then click this paper to place it.</p>`;
+    composeBox.innerHTML = `<p class="hint">No stamps yet. Open Stamps to trace a photo or draw a doodle, then save it. Stamps are optional.</p>`;
     return;
   }
   if (!selectedStampId || !stamps.some((s) => s.id === selectedStampId)) {
@@ -1019,17 +1035,6 @@ function renderStampLists() {
   }
   for (const stamp of stamps) {
     box.appendChild(makeThumb(stamp, () => {
-      if (selectedStampId === stamp.id && confirm(`Delete stamp “${stamp.name}”?`)) {
-        removeStamp(library, stamp.id);
-        library = loadLibrary();
-        placements = placements.filter((p) => p.stampId !== stamp.id);
-        savePlacements(placements);
-        selectedStampId = library.stamps[0]?.id || null;
-        renderStampLists();
-        drawCompose();
-        autosave(true);
-        return;
-      }
       selectedStampId = stamp.id;
       renderStampLists();
     }, stamp.id === selectedStampId));
@@ -1451,6 +1456,35 @@ function init() {
       drawCompose();
       autosave();
     });
+  });
+  $("show-note-preview").addEventListener("click", () => {
+    $("compose-canvas").focus({ preventScroll: true });
+    $("compose-canvas").scrollIntoView({ block: "start" });
+  });
+  $("remove-placed-stamp").addEventListener("click", () => {
+    if (!placements[selectedPlacement]) return;
+    placements.splice(selectedPlacement, 1);
+    selectedPlacement = -1;
+    persistPlacements();
+  });
+  $("delete-saved-stamp").addEventListener("click", () => {
+    const stamp = library.stamps?.find((s) => s.id === selectedStampId);
+    if (!stamp || !confirm(`Delete stamp “${stamp.name}” and all its copies on the note?`)) return;
+    removeStamp(library, stamp.id);
+    library = loadLibrary();
+    placements = placements.filter((p) => p.stampId !== stamp.id);
+    selectedPlacement = -1;
+    selectedStampId = library.stamps[0]?.id || null;
+    renderStampLists();
+    persistPlacements();
+  });
+  $("reset-writing-layout").addEventListener("click", () => {
+    for (const [id, value] of [["x-height", 4.5], ["line-height", 3], ["tracking", 0.28], ["word-space", 0.95]]) {
+      $(id).value = value;
+    }
+    syncComposeLayoutLabels();
+    drawCompose();
+    autosave();
   });
   $("note-font").addEventListener("change", () => {
     syncFontBanners();
