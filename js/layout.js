@@ -96,10 +96,10 @@ function isPunctuation(token) {
 
 export function layoutText(library, text, options) {
   const {
-    xHeightMm = 3.2,
-    tracking = 0.14,
-    wordSpace = 0.42,
-    lineHeight = 2.6,
+    xHeightMm = 4.5,
+    tracking = 0.28,
+    wordSpace = 0.95,
+    lineHeight = 3,
     maxWidth = 170,
     seed = 1,
     jitter = { size: 0.06, rotation: 2.2, baseline: 0.08 },

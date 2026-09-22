@@ -386,7 +386,17 @@ textarea {
 
 .more-box summary::-webkit-details-marker { display: none; }
 
-.more-box .row { margin-top: 12px; }
+.compose-layout .stack.grow {
+  flex: 1 1 200px;
+  min-width: 160px;
+}
+.compose-layout .val {
+  color: var(--color-accent-light);
+  font-variant-numeric: tabular-nums;
+}
+.compose-layout input[type="range"] {
+  width: 100%;
+}
 
 .paper-stage {
   margin-top: 18px;

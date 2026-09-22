@@ -64,6 +64,30 @@ function migrateShadeDensity(ui = {}) {
   return Math.max(1, Math.min(24, d));
 }
 
+function migrateComposeNumber(value, nextDefault, oldDefault) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return nextDefault;
+  if (Math.abs(n - oldDefault) < 1e-6) return nextDefault;
+  return n;
+}
+
+function syncComposeLayoutLabels() {
+  const pairs = [
+    ["x-height-val", "x-height", 1],
+    ["line-height-val", "line-height", 2],
+    ["tracking-val", "tracking", 2],
+    ["word-space-val", "word-space", 2],
+    ["jitter-val", "jitter", 0],
+  ];
+  for (const [labelId, inputId, digits] of pairs) {
+    const label = $(labelId);
+    const input = $(inputId);
+    if (!label || !input) continue;
+    const n = Number(input.value);
+    label.textContent = Number.isFinite(n) ? n.toFixed(digits) : input.value;
+  }
+}
+
 function collectProject() {
   return {
     library,
@@ -71,10 +95,10 @@ function collectProject() {
     machine,
     compose: {
       text: $("note-text").value,
-      xHeight: Number($("x-height").value) || 3.2,
-      lineHeight: Number($("line-height").value) || 2.6,
-      tracking: Number($("tracking").value) || 0.14,
-      wordSpace: Number($("word-space").value) || 0.42,
+      xHeight: Number($("x-height").value) || 4.5,
+      lineHeight: Number($("line-height").value) || 3,
+      tracking: Number($("tracking").value) || 0.28,
+      wordSpace: Number($("word-space").value) || 0.95,
       seed: Number($("seed").value) || 7,
       jitter: Number($("jitter").value) || 0,
       stampSize: Number($("stamp-size").value) || 28,
@@ -126,12 +150,13 @@ function applyProject(project) {
   if (!$("note-text").value.trim() || $("note-text").value.trim() === "Hi there") {
     $("note-text").value = SAMPLE_NOTE;
   }
-  $("x-height").value = project.compose?.xHeight ?? 3.2;
-  $("line-height").value = project.compose?.lineHeight ?? 2.6;
-  $("tracking").value = project.compose?.tracking ?? 0.14;
-  $("word-space").value = project.compose?.wordSpace ?? 0.42;
+  $("x-height").value = migrateComposeNumber(project.compose?.xHeight, 4.5, 3.2);
+  $("line-height").value = migrateComposeNumber(project.compose?.lineHeight, 3, 2.6);
+  $("tracking").value = migrateComposeNumber(project.compose?.tracking, 0.28, 0.14);
+  $("word-space").value = migrateComposeNumber(project.compose?.wordSpace, 0.95, 0.42);
   $("seed").value = project.compose?.seed ?? 7;
   $("jitter").value = project.compose?.jitter ?? 55;
+  syncComposeLayoutLabels();
   $("stamp-size").value = project.compose?.stampSize ?? 28;
   $("fun-run-count").value = project.compose?.funRunCount ?? 6;
   $("auto-fix-export").checked = project.compose?.autoFixExport !== false;
@@ -372,14 +397,14 @@ function drawCapture() {
 const PAGE_MARGIN = 8;
 
 function composeLayoutOptions(xHeightMm) {
-  const xh = Number(xHeightMm);
+  const xh = Number(xHeightMm) || Number($("x-height").value) || 4.5;
   const jitterAmt = Number($("jitter").value) / 100;
   const paperW = Number(machine.paperWidth) || 170;
   return {
     xHeightMm: xh,
-    tracking: Number($("tracking").value) || 0.14,
-    wordSpace: Number($("word-space").value) || 0.42,
-    lineHeight: Number($("line-height").value) || 2.6,
+    tracking: Number($("tracking").value) || 0.28,
+    wordSpace: Number($("word-space").value) || 0.95,
+    lineHeight: Number($("line-height").value) || 3,
     maxWidth: Math.max(paperW - PAGE_MARGIN, 20),
     seed: Number($("seed").value) || 1,
     jitter: {
@@ -392,7 +417,7 @@ function composeLayoutOptions(xHeightMm) {
   };
 }
 
-function composeStrokes(xHeightMm = Number($("x-height").value) || 3.2, stampList = placements) {
+function composeStrokes(xHeightMm = Number($("x-height").value) || 4.5, stampList = placements) {
   const hand = composeLibrary(library, $("note-font")?.value || DEFAULT_FONT_ID);
   const result = layoutText(hand, $("note-text").value, composeLayoutOptions(xHeightMm));
   const stampStrokes = placementsToStrokes(hand, stampList);
@@ -457,7 +482,7 @@ function clampPaperToBed() {
 
 function shrinkToFitPage() {
   const moved = nudgeStampsOntoPage();
-  const current = Number($("x-height").value) || 3.2;
+  const current = Number($("x-height").value) || 4.5;
   const minH = 1.2;
   const trial = (xh) => composeStrokes(xh).report;
   if (boundsFit(trial(current))) {
@@ -465,7 +490,8 @@ function shrinkToFitPage() {
     return { changed: Boolean(moved), xHeight: current };
   }
   if (!boundsFit(trial(minH))) {
-    $("x-height").value = minH.toFixed(2);
+    $("x-height").value = minH.toFixed(1);
+    syncComposeLayoutLabels();
     for (const p of placements) {
       p.sizeMm = Math.max(8, (p.sizeMm || 28) * 0.82);
     }
@@ -485,7 +511,8 @@ function shrinkToFitPage() {
     if (boundsFit(trial(mid))) lo = mid;
     else hi = mid;
   }
-  $("x-height").value = lo.toFixed(2);
+  $("x-height").value = lo.toFixed(1);
+  syncComposeLayoutLabels();
   persistPlacements();
   drawCompose();
   return { changed: true, xHeight: lo };
@@ -1419,7 +1446,11 @@ function init() {
   });
 
   ["note-text", "x-height", "line-height", "tracking", "word-space", "seed", "jitter"].forEach((id) => {
-    $(id).addEventListener("input", () => { drawCompose(); autosave(); });
+    $(id).addEventListener("input", () => {
+      syncComposeLayoutLabels();
+      drawCompose();
+      autosave();
+    });
   });
   $("note-font").addEventListener("change", () => {
     syncFontBanners();

@@ -104,9 +104,12 @@ export function renderHomeDashboard() {
 
   const demo = makeSampleFont("casual");
   const note = layoutText(demo, SAMPLE_NOTE, {
-    xHeightMm: 4.4,
-    maxWidth: 90,
+    xHeightMm: 4.8,
+    maxWidth: 100,
     seed: 13,
+    tracking: 0.28,
+    wordSpace: 0.95,
+    lineHeight: 3,
     jitter: { size: 0.06, rotation: 2.4, baseline: 0.09 },
     marginLeft: 2,
     marginTop: 2,

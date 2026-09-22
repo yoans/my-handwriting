@@ -382,41 +382,51 @@
         <label for="note-text">Your message</label>
         <textarea id="note-text" placeholder="Happy birthday! Hope your day is full of good things." aria-describedby="note-help"></textarea>
         <p class="hint" id="note-help">Choose a sample alphabet to try it right away. To use your own writing, save letters under Your handwriting, then select it above. Missing letters are listed below the controls.</p>
+
+        <div class="compose-layout card" style="margin-top:14px;">
+          <p class="side-label">Look of the writing</p>
+          <div class="row">
+            <div class="stack grow">
+              <label for="x-height">Letter size <span class="val" id="x-height-val">4.5</span> mm</label>
+              <input id="x-height" type="range" min="2" max="12" step="0.1" value="4.5" />
+            </div>
+            <div class="stack grow">
+              <label for="line-height">Line spacing <span class="val" id="line-height-val">3.0</span>×</label>
+              <input id="line-height" type="range" min="1.6" max="4.5" step="0.05" value="3" />
+            </div>
+          </div>
+          <div class="row">
+            <div class="stack grow">
+              <label for="tracking">Letter spacing <span class="val" id="tracking-val">0.28</span>×</label>
+              <input id="tracking" type="range" min="0" max="0.8" step="0.01" value="0.28" />
+            </div>
+            <div class="stack grow">
+              <label for="word-space">Word spacing <span class="val" id="word-space-val">0.95</span>×</label>
+              <input id="word-space" type="range" min="0.2" max="2.2" step="0.05" value="0.95" />
+            </div>
+          </div>
+          <p class="hint" style="margin:8px 0 0;">Spacing is relative to letter size. Drag right if letters feel bunched; left if they feel sparse.</p>
+          <details class="more-box" style="margin-top:12px;">
+            <summary>Variation (how messy it looks)</summary>
+            <div class="row">
+              <div class="stack grow">
+                <label for="jitter">Natural wobble <span class="val" id="jitter-val">55</span></label>
+                <input id="jitter" type="range" min="0" max="100" value="55" />
+              </div>
+              <div class="stack">
+                <label for="seed">Random mix</label>
+                <input id="seed" type="number" value="7" />
+              </div>
+            </div>
+            <p class="hint" style="margin:10px 0 0;">Wobble mixes letter sizes and angles so it does not look like a font. Change the mix number for a different shuffle of your saved letter versions.</p>
+          </details>
+        </div>
+
         <div class="paper-stage">
           <div class="canvas-wrap">
             <canvas id="compose-canvas" width="1400" height="900" role="img" aria-label="Preview of your message and any placed stamps."></canvas>
           </div>
         </div>
-        <details class="more-box">
-          <summary>Letter size, spacing, and variation</summary>
-          <div class="row">
-            <div class="stack">
-              <label for="x-height">Letter height (mm)</label>
-              <input id="x-height" type="number" step="0.1" value="3.2" />
-            </div>
-            <div class="stack">
-              <label for="line-height">Space between lines</label>
-              <input id="line-height" type="number" step="0.1" value="2.6" />
-            </div>
-            <div class="stack">
-              <label for="tracking">Gap between letters</label>
-              <input id="tracking" type="number" step="0.02" value="0.14" />
-            </div>
-            <div class="stack">
-              <label for="word-space">Extra gap for a space</label>
-              <input id="word-space" type="number" step="0.02" value="0.42" />
-            </div>
-            <div class="stack">
-              <label for="seed">Random mix (seed)</label>
-              <input id="seed" type="number" value="7" />
-            </div>
-            <div class="stack">
-              <label for="jitter">Letter variation</label>
-              <input id="jitter" type="range" min="0" max="100" value="55" />
-            </div>
-          </div>
-          <p class="hint" style="margin:10px 0 0;">Letter height is the size of a lowercase letter like “x”. Line spacing is a multiple of that. Wobble mixes your saved versions so it does not look like a font.</p>
-        </details>
         <div class="toolbar" style="margin-top:14px;">
           <button class="btn" id="export-png">Download PNG</button>
           <button class="btn secondary" id="export-svg">Download SVG</button>
