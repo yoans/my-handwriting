@@ -3,30 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>My Handwriting — plot your own hand</title>
+  <title>My Handwriting — a birthday note became a project</title>
   <meta name="description" content="Record your handwriting in the browser, turn photos into pen drawings, and download a print file for a 3D printer that is holding a pen." />
   <meta name="theme-color" content="#0a0a0f" />
   <link rel="canonical" href="https://my-handwriting.buildbeyondbelief.com/" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://my-handwriting.buildbeyondbelief.com/" />
-  <meta property="og:title" content="My Handwriting — plot your own hand" />
-  <meta property="og:description" content="Record your handwriting, turn a photo into pen lines, download a print file. Your hand, not a font. Stays in this browser." />
+  <meta property="og:title" content="My Handwriting — a birthday note became a project" />
+  <meta property="og:description" content="A birthday note became a browser tool. Try a note, capture your handwriting, and let a 3D printer hold the pen. Free, with no uploads." />
   <meta property="og:image" content="https://my-handwriting.buildbeyondbelief.com/og-image.jpg" />
   <meta property="og:image:width" content="1280" />
   <meta property="og:image:height" content="720" />
   <meta property="og:image:alt" content="A 3D printer plotting a handwritten note on paper" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="My Handwriting — plot your own hand" />
+  <meta name="twitter:title" content="My Handwriting — a birthday note became a project" />
   <meta name="twitter:description" content="Record your handwriting, turn a photo into pen lines, download a print file. Stays in this browser." />
   <meta name="twitter:image" content="https://my-handwriting.buildbeyondbelief.com/og-image.jpg" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="apple-touch-icon" href="og-image.jpg" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
   <header class="topbar">
     <a class="logo" href="#home" id="go-home">
       <svg class="logo-mark" viewBox="40 40 200 200" aria-hidden="true">
@@ -43,10 +41,10 @@
     </a>
     <nav class="step-nav" aria-label="Studio steps">
       <button class="nav-btn" data-panel="home" aria-current="page">Home</button>
-      <button class="nav-btn" data-panel="capture">1. Write</button>
-      <button class="nav-btn" data-panel="stamps">2. Stamps</button>
-      <button class="nav-btn" data-panel="compose">3. Note</button>
-      <button class="nav-btn" data-panel="machine">4. Printer</button>
+      <button class="nav-btn" data-panel="compose">Make a note</button>
+      <button class="nav-btn" data-panel="capture">Your handwriting</button>
+      <button class="nav-btn" data-panel="stamps">Stamps</button>
+      <button class="nav-btn" data-panel="machine">Printer setup</button>
     </nav>
     <div class="topbar-end">
       <button class="nav-btn" type="button" id="open-settings">Settings</button>
@@ -54,16 +52,16 @@
     </div>
   </header>
 
-  <dialog id="settings-dialog" class="settings-dialog">
+  <dialog id="settings-dialog" class="settings-dialog" aria-labelledby="settings-title">
     <form method="dialog">
-      <h2>Settings</h2>
+      <h2 id="settings-title">Settings</h2>
       <p class="hint" id="save-status">Saving in this browser…</p>
       <p class="hint">Letters, stamps, the note, and printer settings stay in this browser. Download a backup before you clear site data or switch computers.</p>
       <div class="stack" style="gap:8px; margin:16px 0;">
         <button class="btn" type="button" id="export-project">Download a backup</button>
         <button class="btn secondary" type="button" id="import-project">Restore from a backup</button>
         <button class="btn ghost" type="button" id="merge-project">Add a backup without replacing my note</button>
-        <button class="btn danger" type="button" id="reset-all">Erase everything in this browser</button>
+        <button class="btn danger" type="button" id="reset-all">Clear this site’s saved work</button>
       </div>
       <input id="import-file" type="file" accept="application/json,.json" hidden />
       <button class="btn secondary" value="close">Close</button>
@@ -71,23 +69,29 @@
   </dialog>
 
   <div class="app-shell on-home">
-    <main class="main">
+    <main class="main" id="main-content" tabindex="-1">
       <section class="panel active" id="panel-home">
-        <p class="side-label">Home</p>
-        <h2>What you can make</h2>
-        <p class="lede">
-          Clip a pen on a 3D printer and it writes like a plotter. This site records
-          <em>your</em> handwriting, turns photos into pen drawings, and lets you doodle —
-          then downloads a print file. Nothing is uploaded. It stays in this browser.
-        </p>
+        <div class="home-intro">
+          <p class="side-label">A small project from Build Beyond Belief</p>
+          <h1>It started with a birthday note.</h1>
+          <p class="lede">I used this to make a birthday note in my own handwriting, with a pen attached to a 3D printer. Along the way, turning letters into movements became a project of its own.</p>
+          <p class="intro-story">That is the part I enjoy: making something personal, figuring out how to make it work, and sharing it so someone else can have a go.</p>
+          <div class="toolbar">
+            <button class="btn" type="button" data-go="compose">Make your first note</button>
+            <button class="btn secondary" type="button" data-go="machine">How the printer writes</button>
+          </div>
+          <p class="hint">Start with a sample alphabet and download a picture. No printer or account needed.</p>
+          <p class="privacy-line">Free to use. No uploads, cloud storage, analytics, or tracking scripts. Your work saves in this browser.</p>
+        </div>
+        <h2>Make it your own</h2>
 
         <div class="dash-grid">
           <article class="dash-card">
             <p class="dash-tag">Handwritten notes</p>
             <h3>Type a message in your own hand</h3>
-            <p>Save how you write each letter. Type a note. The printer replays those strokes, in order — not a font.</p>
+            <p>Try a sample alphabet first. Then save your own letters and type a message using those strokes. You only need the letters your note uses.</p>
             <div class="paper-stage dash-paper">
-              <canvas id="home-note" width="720" height="280"></canvas>
+              <canvas id="home-note" width="720" height="280" role="img" aria-label="Example note rendered with a sample alphabet."></canvas>
             </div>
             <div class="toolbar">
               <button class="btn" type="button" data-go="compose">Try a sample note</button>
@@ -100,7 +104,7 @@
             <h3>Draw it yourself</h3>
             <p>A smiley, a name, a scribble. The printer follows the same stroke order you drew.</p>
             <div class="paper-stage dash-paper">
-              <canvas id="home-doodle" width="420" height="280"></canvas>
+              <canvas id="home-doodle" width="420" height="280" role="img" aria-label="Example doodle made of pen strokes."></canvas>
             </div>
             <div class="toolbar">
               <button class="btn" type="button" data-go="stamps" data-doodle="1">Draw a doodle</button>
@@ -113,23 +117,23 @@
             <p>Load a photo. Rings is the default fill — hatch, squiggle, or wander if you want a different look.</p>
             <div class="dash-modes">
               <figure>
-                <canvas id="home-photo" width="220" height="220"></canvas>
+                <canvas id="home-photo" width="220" height="220" role="img" aria-label="Example photo preview"></canvas>
                 <figcaption>Photo</figcaption>
               </figure>
               <figure>
-                <canvas id="home-rings" width="220" height="220"></canvas>
+                <canvas id="home-rings" width="220" height="220" role="img" aria-label="Example rings preview"></canvas>
                 <figcaption>Rings</figcaption>
               </figure>
               <figure>
-                <canvas id="home-hatch" width="220" height="220"></canvas>
+                <canvas id="home-hatch" width="220" height="220" role="img" aria-label="Example hatch preview"></canvas>
                 <figcaption>Hatch</figcaption>
               </figure>
               <figure>
-                <canvas id="home-squiggle" width="220" height="220"></canvas>
+                <canvas id="home-squiggle" width="220" height="220" role="img" aria-label="Example squiggle preview"></canvas>
                 <figcaption>Squiggle</figcaption>
               </figure>
               <figure>
-                <canvas id="home-spiral" width="220" height="220"></canvas>
+                <canvas id="home-spiral" width="220" height="220" role="img" aria-label="Example spiral preview"></canvas>
                 <figcaption>Wander</figcaption>
               </figure>
             </div>
@@ -140,22 +144,27 @@
         </div>
 
         <div class="card how-card" style="margin-top:28px;">
-          <p class="side-label">Then print it</p>
+          <h3>From a few words to ink on paper</h3>
           <ol>
-            <li><strong>Write</strong> your letters (or start from a sample handwriting).</li>
-            <li><strong>Stamps</strong> are optional pictures on the page.</li>
-            <li><strong>Note</strong> is where you type and download a print file.</li>
-            <li><strong>Printer</strong> is where you pick your 3D printer and run a practice pass with the pen in the air.</li>
+            <li><strong>Make a note.</strong> Type a short message, choose a sample alphabet, and download a PNG picture or SVG drawing.</li>
+            <li><strong>Add your handwriting.</strong> Draw and save the letters you need, then choose “Your handwriting” on the Note page. Stamps are optional.</li>
+            <li><strong>Put a pen to paper.</strong> Read Printer setup, check your holder and machine settings, then run a practice file before writing.</li>
           </ol>
           <div class="toolbar" style="margin-top:14px;">
             <button class="btn" type="button" data-go="machine">Set up the printer</button>
             <button class="btn secondary" type="button" data-go="compose">Open the note</button>
           </div>
         </div>
+        <div class="card how-card">
+          <h3>Yours to keep and tinker with</h3>
+          <p>This is a lightweight, static website. Your letters, photos, and note are processed on your device. There is no account to create and no project stored on a server.</p>
+          <p>Use <strong>Settings → Download a backup</strong> to take your saved work to another browser or computer. Browser storage can be cleared, so keep a backup of letters you want to reuse.</p>
+          <p>The <a href="https://github.com/yoans/my-handwriting" target="_blank" rel="noopener">source and local setup instructions</a> are available if you want to run your own copy. The web host still receives ordinary page requests; this app adds no analytics or tracking.</p>
+        </div>
       </section>
 
       <section class="panel" id="panel-capture">
-        <h2>Write</h2>
+        <h2>Your handwriting</h2>
         <p class="lede">
           The printer can only replay paths you draw here — it cannot guess from a photo of letters.
           Draw each character the way you write it (a tablet pen is nicest; a mouse works). Save a few versions of the letters you actually use.
@@ -163,6 +172,7 @@
         <p class="demo-banner" id="demo-banner-capture">
           This grid is only letters you draw. Sample handwriting lives on the Note tab.
         </p>
+        <p class="hint" id="capture-help">Start with a short note on the Note page to see which letters you need. Uppercase and lowercase are separate. Draw with a mouse, touch, or stylus; a loaded photo is a guide you trace yourself. Drawing needs a pointer, but you can type a note with a sample alphabet using the keyboard.</p>
 
         <div class="row">
           <div class="stack">
@@ -208,7 +218,7 @@
 
         <div class="paper-stage">
           <div class="canvas-wrap">
-            <canvas id="capture-canvas" width="1400" height="700"></canvas>
+            <canvas id="capture-canvas" width="1400" height="700" role="img" aria-label="Handwriting drawing area. Use a mouse, touch, or stylus to draw strokes."></canvas>
           </div>
           <div class="guide-legend">
             <span><i class="swatch" style="background:#6366f1"></i>tall letters (H, b)</span>
@@ -218,7 +228,7 @@
             <span>Handwriting guides, like lined paper. Write between them. The gray tick on the left is the start of the letter.</span>
           </div>
         </div>
-        <p class="status" id="capture-status"></p>
+        <p class="status" id="capture-status" role="status"></p>
 
         <h3 style="margin:22px 0 8px;">Your alphabet</h3>
         <p class="hint">Tap a character, draw it above, then save. A colored cell means you already saved that letter — two or more versions (green) look more natural when the note mixes them.</p>
@@ -232,12 +242,12 @@
         <h2>Stamps</h2>
         <p class="lede">A stamp is a little picture you plant on the note. Trace a photo, or draw a doodle.</p>
         <input type="hidden" id="stamp-source" value="photo" />
-        <div class="stamp-tabs" role="tablist" aria-label="Stamp type">
-          <button class="stamp-tab" type="button" role="tab" data-stamp-tab="photo" aria-selected="true">Photo</button>
-          <button class="stamp-tab" type="button" role="tab" data-stamp-tab="doodle" aria-selected="false">Doodle</button>
+        <div class="stamp-tabs" role="group" aria-label="Stamp type">
+          <button class="stamp-tab" type="button" data-stamp-tab="photo" aria-pressed="true">Photo</button>
+          <button class="stamp-tab" type="button" data-stamp-tab="doodle" aria-pressed="false">Doodle</button>
         </div>
 
-        <article class="stamp-block" id="section-photo" role="tabpanel">
+        <article class="stamp-block" id="section-photo">
           <p class="side-label">Simple trace</p>
           <h3>Photo to pen lines</h3>
           <p class="hint">Load a picture. Rings is the default — a low-fidelity fill that packs tighter in the darks.</p>
@@ -315,13 +325,13 @@
           </div>
           <div class="paper-stage">
             <div class="canvas-wrap">
-              <canvas id="stamp-canvas" width="1400" height="700"></canvas>
+              <canvas id="stamp-canvas" width="1400" height="700" role="img" aria-label="stamp canvas preview"></canvas>
             </div>
           </div>
           <p class="status" id="stamp-status">Load a photo. Rings turn dark areas into nested circles.</p>
         </article>
 
-        <article class="stamp-block" id="section-doodle" role="tabpanel" hidden>
+        <article class="stamp-block" id="section-doodle" hidden>
           <p class="side-label">Doodle</p>
           <h3>Draw it yourself</h3>
           <p class="hint">Same stroke order you draw, like replaying a finger on paper.</p>
@@ -344,7 +354,7 @@
           </div>
           <div class="paper-stage">
             <div class="canvas-wrap">
-              <canvas id="doodle-canvas" width="1400" height="700"></canvas>
+              <canvas id="doodle-canvas" width="1400" height="700" role="img" aria-label="doodle canvas preview"></canvas>
             </div>
           </div>
           <p class="status" id="doodle-status">Draw on the paper. The printer follows the same order.</p>
@@ -369,9 +379,16 @@
             <select id="note-font"></select>
           </div>
         </div>
-        <textarea id="note-text" placeholder="Type a short note…"></textarea>
+        <label for="note-text">Your message</label>
+        <textarea id="note-text" placeholder="Happy birthday! Hope your day is full of good things." aria-describedby="note-help"></textarea>
+        <p class="hint" id="note-help">Choose a sample alphabet to try it right away. To use your own writing, save letters under Your handwriting, then select it above. Missing letters are listed below the controls.</p>
+        <div class="paper-stage">
+          <div class="canvas-wrap">
+            <canvas id="compose-canvas" width="1400" height="900" role="img" aria-label="Preview of your message and any placed stamps."></canvas>
+          </div>
+        </div>
         <details class="more-box">
-          <summary>Size, spacing, and how messy it looks</summary>
+          <summary>Letter size, spacing, and variation</summary>
           <div class="row">
             <div class="stack">
               <label for="x-height">Letter height (mm)</label>
@@ -394,7 +411,7 @@
               <input id="seed" type="number" value="7" />
             </div>
             <div class="stack">
-              <label for="jitter">Human wobble</label>
+              <label for="jitter">Letter variation</label>
               <input id="jitter" type="range" min="0" max="100" value="55" />
             </div>
           </div>
@@ -406,7 +423,7 @@
           <button class="btn secondary" id="export-gcode">Download print file</button>
           <button class="btn ghost" id="export-dry">Practice file (pen in the air)</button>
         </div>
-        <p class="hint" style="margin:10px 0 0;">PNG and SVG are pictures of the note. The print file is G-code for a 3D printer with a pen. The practice file does the same path with the pen lifted.</p>
+        <p class="hint" style="margin:10px 0 0;">PNG is a picture to share; SVG keeps the drawing as scalable lines. To write on paper, read <button class="text-button" type="button" data-go="machine">Printer setup</button> before downloading G-code. A practice file lifts the pen during the drawing, but still runs the printer’s startup and homing sequence.</p>
         <div class="card" style="margin-top:14px;">
           <div class="row">
             <div class="stack">
@@ -425,34 +442,36 @@
               </div>
             </div>
           </div>
-          <p class="hint" style="margin:10px 0 0;">Select a saved stamp, then click the paper preview below to place it. Drag to move.</p>
+          <p class="hint" style="margin:10px 0 0;">Select a saved stamp, then click the paper preview above to place it. Drag to move.</p>
           <div class="variant-list" id="compose-stamp-list"></div>
         </div>
-        <p class="missing" id="missing-list"></p>
+        <p class="status" id="compose-status" role="status"></p>
+        <p class="missing" id="missing-list" role="status"></p>
         <div class="bounds-bar" id="bounds-bar" data-state="ok">
-          <p class="bounds-status" id="bounds-status">Fits on the paper and on the printer bed</p>
+          <p class="bounds-status" id="bounds-status" role="status">Fits on the paper and on the printer bed</p>
           <div class="toolbar">
             <button class="btn" id="fit-page">Shrink writing to fit the paper</button>
             <button class="btn ghost" id="clamp-paper">Shrink the writable area to the bed</button>
             <label class="hint"><input type="checkbox" id="auto-fix-export" checked /> Fix overflow when I download</label>
           </div>
         </div>
-        <div class="paper-stage">
-          <div class="canvas-wrap">
-            <canvas id="compose-canvas" width="1400" height="900"></canvas>
-          </div>
-        </div>
       </section>
 
       <section class="panel" id="panel-machine">
         <h2>Printer &amp; pen</h2>
+        <div class="card how-card">
+          <h3>Same machine, different tool</h3>
+          <p>A plotter moves a pen along a path. Your 3D printer already has the motion: X and Y move across the page, and Z lifts the pen between strokes. A suitable holder keeps the pen attached to the toolhead while paper stays secured to the bed.</p>
+          <p>This app turns your saved strokes into <strong>G-code</strong>, the movement instructions the printer reads. The exported job requests no nozzle or bed heat and no plastic extrusion. It does not connect to or control your printer from the browser.</p>
+          <p>You will need a compatible pen holder, a pen, paper, and a way to load the file on your printer. Presets are starting settings; the holder position, pen length, firmware, and usable travel still need checking on your machine.</p>
+        </div>
         <p class="lede">
           You need a 3D printer — the kind that usually melts plastic — with a pen clipped where the nozzle sits, and paper taped to the bed.
           This site does not talk to the printer by itself. You download a print file from the Note page, then start it the same way you would start a normal print (often a memory card).
           Stay next to the first run. If the pen is too low it can scratch the bed.
         </p>
         <p class="hint" style="margin:-8px 0 16px;">
-          <strong>Bambu Lab A1</strong> is a popular small desktop 3D printer this app is tuned for. If that is your machine, pick it under Printer model. If you have something else (Prusa, Ender, and many others), pick the closest match. You do not need a Bambu printer to try the on-screen note.
+          <strong>Bambu Lab A1</strong> is a popular small desktop 3D printer this app is tuned for. If that is your machine, pick it under Printer model. For another printer, check its firmware and dimensions against the available presets before exporting. You do not need a Bambu printer to try the on-screen note.
         </p>
         <div class="card" style="margin-bottom:16px;">
           <div class="machine-grid">
@@ -493,11 +512,11 @@
               <input id="z-down" type="number" step="0.1" />
             </div>
             <div class="stack">
-              <label for="travel-feed">Move speed</label>
+              <label for="travel-feed">Move speed (mm/min)</label>
               <input id="travel-feed" type="number" />
             </div>
             <div class="stack">
-              <label for="write-feed">Write speed</label>
+              <label for="write-feed">Write speed (mm/min)</label>
               <input id="write-feed" type="number" />
             </div>
             <div class="stack" id="pen-z-wrap" hidden>
@@ -527,9 +546,9 @@
             <li>Print an <strong>A1</strong> pen holder — not a P1/X1 mount. Start with <a href="https://makerworld.com/en/models/429109-pen-holder-a1-a1-mini-plotter" target="_blank" rel="noopener">Pen Holder A1 / A1 Mini</a> or the simpler <a href="https://makerworld.com/en/models/1362648-easy-penholder-a1-a1-mini" target="_blank" rel="noopener">Easy penholder</a>. The modular <a href="https://makerworld.com/en/models/2029113-modular-system-for-a1-p1-x1-series" target="_blank" rel="noopener">UMTS by Falu</a> also lists an A1 profile.</li>
             <li>Unload filament. Leave AMS Lite disconnected for this job. Mount the holder per its page, then clamp a fineliner. The nib sits <em>below</em> the nozzle — that gap is <strong>pen Z offset</strong>.</li>
             <li>Tape paper to a <strong>smooth / cool plate</strong> (textured PEI is lumpy). Put the top of the page toward the <strong>back</strong> of the printer. Keep ~25 mm clear of every bed edge. The start G-code homes the <em>nozzle</em> at <code>X128 Y2</code> so the pen can hang off the rear — do not tape paper into that back strip.</li>
-            <li>Leave pen Z offset at <strong>20 mm</strong> for the first runs (too high is safe; too low scrapes the plate on the way in). A 2 mm click-count is almost always too small — if the Sharpie cannot clear the rear edge after Z home, the offset is too low, not Z up. Z down = 0 after that offset is zeroed.</li>
+            <li>Measure how far the nib sits below the nozzle and use that to check <strong>pen Z offset</strong>. The default 20 mm is a starting value, not a measured clearance. The startup homes Z before applying this offset, so increasing it cannot prevent a collision during homing. Confirm the mounted pen clears the bed at the homing position before running the file.</li>
             <li>Export a <strong>dry-run</strong> first (pen stays up). Copy the <code>.gcode</code> to the <strong>root</strong> of the A1 MicroSD card. The card is <em>not</em> hot-swappable: on the screen, eject it before pulling it. Wiki: <a href="https://wiki.bambulab.com/en/a1/manual/how-to-print-from-sd-card" target="_blank" rel="noopener">print from SD card</a>.</li>
-            <li>Print Files → your file. Turn <strong>off</strong> bed leveling, flow/nozzle calibration, AMS, and spaghetti detection if the start dialog offers them. Stay next to the machine for Z home. If the pen hits the bed before the nozzle does, abort immediately and increase the offset — or make sure Y2 actually clears the pen off the plate.</li>
+            <li>Print Files → your file. Turn <strong>off</strong> bed leveling, flow/nozzle calibration, AMS, and spaghetti detection if the start dialog offers them. Stay next to the machine for Z home. If the pen hits the bed before the nozzle does, stop the job. Correct the holder clearance or homing approach before trying again; changing the offset alone will not fix contact during homing.</li>
             <li>When the dry-run path looks right, run the 20 mm square. Lower pen Z offset a millimeter at a time until the square is a clean line, then write a short word. <strong>Mirror X</strong> is on for the A1 so the page reads left-to-right when you pick it up with the top at the back. Uncheck it if letters are still backwards.</li>
           </ol>
           <p class="hint">The A1’s build area is 256×256 mm. Watch the first home. Do not use the stock plastic-print home with a pen mounted.</p>
@@ -538,7 +557,7 @@
         <p class="hint" id="generic-machine-hint">
           After you pick a printer, clip a fineliner in a printed pen holder, tape paper to a smooth plate, and download a <strong>practice file</strong> first (pen stays up). Then a 20 mm test square, then a short word.
           “Pen height while writing” is where the nib just marks the paper. “Pen height while moving” should clear the page. Home left-right and front-back only — never home the up-down axis with a pen mounted.
-          If the printer refuses to move while cold, look in its firmware settings for “allow cold extrusion.”
+          If motion is refused, check the printer’s homing requirements and firmware documentation. This job uses no extrusion, so enabling cold extrusion is not a required setup step.
         </p>
       </section>
     </main>
@@ -548,9 +567,9 @@
     <div class="site-footer-inner">
       <p>
         My Handwriting is a <a href="https://buildbeyondbelief.com/" target="_blank" rel="noopener">Build Beyond Belief</a> studio tool.
-        No account. Nothing is uploaded. <a href="https://github.com/yoans/my-handwriting" target="_blank" rel="noopener">Source on GitHub</a>.
+        Free to use. No account, uploads, or analytics. Back up your work in Settings. <a href="https://github.com/yoans/my-handwriting" target="_blank" rel="noopener">Source on GitHub</a>.
       </p>
-      <p>Stay next to the first plot. If the pen hangs below the usual nozzle, it can hit the bed if it is too low.</p>
+      <p>Made for a birthday note. Shared for whatever you make next.</p>
     </div>
   </footer>
   <script type="module" src="js/app.js"></script>

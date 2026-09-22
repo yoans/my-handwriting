@@ -5,7 +5,7 @@
   --color-surface: #1a1a24;
   --color-text: #ffffff;
   --color-text-muted: #9ca3af;
-  --color-text-subtle: #6b7280;
+  --color-text-subtle: #a1a7b3;
   --color-border: rgba(255, 255, 255, 0.08);
   --color-primary: #6366f1;
   --color-primary-light: #818cf8;
@@ -17,8 +17,8 @@
   --color-danger: #f43f5e;
   --gradient-primary: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%);
   --gradient-glow: radial-gradient(ellipse at 12% -10%, rgba(99, 102, 241, 0.18) 0%, transparent 55%);
-  --font-display: "Space Grotesk", sans-serif;
-  --font-body: "Inter", sans-serif;
+  --font-display: "Segoe UI", system-ui, sans-serif;
+  --font-body: "Segoe UI", system-ui, sans-serif;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 20px;
@@ -62,7 +62,7 @@ a:hover {
 }
 
 .gradient-text {
-  background: var(--gradient-primary);
+  background: #4f46e5;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -193,13 +193,13 @@ a:hover {
   font-weight: 600;
   font-size: 0.9rem;
 }
-.stamp-tab[aria-selected="true"],
+.stamp-tab[aria-pressed="true"],
 .stamp-tab:hover {
   color: var(--color-text);
   background: rgba(255, 255, 255, 0.05);
   border-color: rgba(6, 182, 212, 0.4);
 }
-.stamp-tab[aria-selected="true"] {
+.stamp-tab[aria-pressed="true"] {
   background: rgba(6, 182, 212, 0.12);
 }
 
@@ -238,6 +238,8 @@ a:hover {
 #save-status { color: var(--color-accent-light); }
 
 .main {
+  max-width: 1240px;
+  margin: 0 auto;
   padding: 28px 32px 56px;
   min-width: 0;
 }
@@ -329,7 +331,7 @@ textarea {
   border-radius: var(--radius-sm);
   padding: 9px 16px;
   cursor: pointer;
-  background: var(--gradient-primary);
+  background: #4f46e5;
   color: #fff;
   font-family: var(--font-display);
   font-weight: 600;
@@ -595,7 +597,7 @@ textarea {
 
 .dash-modes {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
   margin: 14px 0 16px;
 }
@@ -718,3 +720,18 @@ textarea {
 @media (max-width: 560px) {
   .dash-modes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* First-visit guidance and keyboard access. */
+.home-intro { max-width: 820px; padding: 24px 0 30px; }
+.home-intro h1 { font-size: clamp(2.2rem, 5vw, 3.8rem); line-height: 1.12; letter-spacing: -0.035em; margin: 8px 0 24px; }
+.home-intro .lede { font-size: 1.15rem; color: #e1e3e8; }
+.intro-story { max-width: 62ch; color: var(--color-text-muted); margin-bottom: 24px; }
+.privacy-line { padding-top: 16px; border-top: 1px solid var(--color-border); color: var(--color-text-muted); font-size: .9rem; }
+.how-card > p { max-width: 85ch; color: var(--color-text-muted); }
+:focus-visible { outline: 3px solid #22d3ee; outline-offset: 4px; }
+.panel h1, .panel h2 { scroll-margin-top: 150px; }
+.skip-link { position: fixed; top: -100px; left: 16px; z-index: 100; padding: 12px 18px; background: #fff; color: #171329; border-radius: 8px; }
+.skip-link:focus { top: 12px; }
+.text-button { padding: 0; border: 0; background: transparent; color: var(--color-accent-light); text-decoration: underline; cursor: pointer; }
+.btn, .nav-btn, .stamp-tab { min-height: 44px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }

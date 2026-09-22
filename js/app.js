@@ -197,11 +197,11 @@ function syncFontBanners() {
   if (compose) {
     if (fontId === CUSTOM_FONT_ID) {
       compose.hidden = hasUserGlyphs(library);
-      compose.textContent = "No letters saved yet. Draw some under Write, or pick a sample handwriting above.";
+      compose.textContent = "No letters saved yet. Draw some under Your handwriting, or pick a sample handwriting above.";
     } else {
       const name = SAMPLE_FONTS.find((f) => f.id === fontId)?.name || "sample handwriting";
       compose.hidden = false;
-      compose.textContent = `Using ${name}. Your captured letters stay on Write — pick Your handwriting to use them.`;
+      compose.textContent = `Using ${name}. Your captured letters stay under Your handwriting — pick Your handwriting to use them.`;
     }
   }
 }
@@ -215,12 +215,17 @@ function panelFromHash() {
 
 function goToPanel(name, opts = {}) {
   if (!PANELS.includes(name)) name = "home";
-  document.querySelectorAll(".nav-btn").forEach((b) => {
+  document.querySelectorAll(".nav-btn[data-panel]").forEach((b) => {
     if (b.dataset.panel === name) b.setAttribute("aria-current", "page");
     else b.removeAttribute("aria-current");
   });
   document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === `panel-${name}`));
   document.querySelector(".app-shell")?.classList.toggle("on-home", name === "home");
+  if (!opts.fromHash) {
+    const heading = document.querySelector(`#panel-${name} h1, #panel-${name} h2`);
+    heading?.setAttribute("tabindex", "-1");
+    heading?.focus();
+  }
   if (name === "home") renderHomeDashboard();
   if (name === "compose") drawCompose();
   if (name === "stamps") {
@@ -246,7 +251,7 @@ function updateSaveStatus(result) {
   const when = new Date(result.project.savedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   const where = [
     result.localStorageOk ? "browser" : null,
-    result.indexedDbOk ? "backup copy" : null,
+    result.indexedDbOk ? "second local copy" : null,
   ].filter(Boolean).join(" + ");
   el.textContent = `Saved ${when} in this ${where}.`;
   el.style.color = "";
@@ -269,7 +274,8 @@ function autosave(immediate = false) {
 }
 
 function setStatus(msg) {
-  $("capture-status").textContent = msg;
+  const target = document.querySelector("#panel-compose.active") ? $("compose-status") : $("capture-status");
+  target.textContent = msg;
 }
 
 function download(filename, data, mime = "text/plain") {
@@ -490,11 +496,11 @@ function updateBoundsUi(report, missing) {
   const status = $("bounds-status");
   const bar = $("bounds-bar");
   const parts = [];
-  if (missing?.length) parts.push(`Missing letters (save them under Write): ${missing.join(" ")}`);
+  if (missing?.length) parts.push(`Missing letters (save them under Your handwriting): ${missing.join(" ")}`);
   if (lastCompose.strokes.length) {
     parts.push(`${lastCompose.strokes.length} strokes · ${lastCompose.bounds.width.toFixed(0)} × ${lastCompose.bounds.height.toFixed(0)} mm`);
     if (placements.length) parts.push(`${placements.length} stamp${placements.length === 1 ? "" : "s"}`);
-  } else parts.push("Nothing to draw yet. Save letters under Write, or add a stamp.");
+  } else parts.push("Nothing to draw yet. Save letters under Your handwriting, or add a stamp.");
   miss.textContent = parts.join(" · ");
   if (!bar || !status) return;
   if (!report || report.empty) {
@@ -752,7 +758,7 @@ function setStampTab(tab, opts = {}) {
   const next = tab === "doodle" ? "doodle" : "photo";
   if ($("stamp-source")) $("stamp-source").value = next;
   document.querySelectorAll(".stamp-tab").forEach((btn) => {
-    btn.setAttribute("aria-selected", btn.dataset.stampTab === next ? "true" : "false");
+    btn.setAttribute("aria-pressed", btn.dataset.stampTab === next ? "true" : "false");
   });
   const photo = $("section-photo");
   const doodle = $("section-doodle");
@@ -1242,7 +1248,7 @@ function paperBox() {
 function ensureNoteStrokes() {
   drawCompose();
   if (!lastCompose.strokes.length) {
-    alert("Nothing to download yet. Save some letters under Write, or add a stamp, then come back here.");
+    alert("Nothing to download yet. Save some letters under Your handwriting, or add a stamp, then come back here.");
     return false;
   }
   return true;
@@ -1339,7 +1345,11 @@ function exportNote(dryRun) {
 }
 
 function initNav() {
-  document.querySelectorAll(".nav-btn").forEach((btn) => {
+  document.querySelector(".skip-link").addEventListener("click", (event) => {
+    event.preventDefault();
+    document.querySelector("main").focus();
+  });
+  document.querySelectorAll(".nav-btn[data-panel]").forEach((btn) => {
     btn.addEventListener("click", () => goToPanel(btn.dataset.panel));
   });
   $("go-home")?.addEventListener("click", (e) => {
@@ -1535,7 +1545,7 @@ function init() {
     $("import-file").click();
   });
   $("reset-all").addEventListener("click", async () => {
-    const ok = confirm("Reset all? This deletes every letter, word, stamp, note, and printer setting saved in this browser. Download a backup first if you might want it back.");
+    const ok = confirm("Clear only what this site saved here — letters, stamps, the note, and printer settings. Other websites are not touched. Download a backup first if you might want this work back.");
     if (!ok) return;
     overlay = { img: null, opacity: overlay.opacity };
     stampImage = null;
@@ -1547,8 +1557,8 @@ function init() {
     await wipeStoredProject();
     applyProject(emptyProject());
     await autosave(true);
-    setStatus("Everything in this browser was cleared.");
-    $("save-status").textContent = "Reset complete. This browser is empty.";
+    setStatus("This site’s saved work was cleared.");
+    $("save-status").textContent = "Cleared. This site has no letters, stamps, or note saved here.";
   });
   $("import-file").addEventListener("change", async (e) => {
     const file = e.target.files?.[0];
